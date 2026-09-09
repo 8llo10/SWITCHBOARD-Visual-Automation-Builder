@@ -1,0 +1,2 @@
+export function getPath(obj:any,path:string){return path.split('.').reduce((v,k)=>v?.[k],obj)}
+export function render(value:any,ctx:any):any{if(typeof value==='string')return value.replace(/\{\{\s*([^}]+)\s*\}\}/g,(_,p)=>String(getPath(ctx,p.trim())??''));if(Array.isArray(value))return value.map(v=>render(v,ctx));if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([k,v])=>[k,render(v,ctx)]));return value}

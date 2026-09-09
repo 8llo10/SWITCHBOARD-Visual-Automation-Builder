@@ -1,0 +1,1 @@
+import {Router} from 'express';import {prisma} from '../config/prisma.js';const r=Router();r.get('/users',async(_q,res)=>res.json(await prisma.directoryUser.findMany({orderBy:{createdAt:'desc'}})));export default r;

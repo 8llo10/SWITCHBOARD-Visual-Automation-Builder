@@ -1,0 +1,1 @@
+export async function sb<T=any>(path:string,init?:RequestInit):Promise<T>{const r=await fetch(`/api/switchboard${path}`,{...init,headers:{'content-type':'application/json',...(init?.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`Request failed ${r.status}`);return data}
