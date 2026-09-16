@@ -1,0 +1,3 @@
+import{prisma}from'../config/prisma.js';import{executeRun}from'../engine/engine.js';
+export const get=(id:string)=>prisma.workflowRun.findUniqueOrThrow({where:{id},include:{steps:{orderBy:{createdAt:'asc'}},logs:{orderBy:{createdAt:'asc'}}}});
+export async function approve(id:string,approvedBy:string){const run=await prisma.workflowRun.findUniqueOrThrow({where:{id},include:{steps:{where:{status:'WAITING'},orderBy:{createdAt:'desc'},take:1}}});const step=run.steps[0];if(!step)return null;await prisma.workflowStep.update({where:{id:step.id},data:{status:'SUCCEEDED',output:{approved:true,approvedBy},finishedAt:new Date()}});void executeRun(run.id,step.nodeId);return{runId:run.id,status:'RUNNING' as const}}
