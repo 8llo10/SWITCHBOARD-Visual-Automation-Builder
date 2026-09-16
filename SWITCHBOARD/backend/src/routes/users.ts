@@ -1,0 +1,26 @@
+import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import { z } from 'zod';
+import { prisma } from '../config/prisma.js';
+import { authorize } from '../middleware/auth.js';
+import { audit } from '../services/audit.service.js';
+
+const router = Router();
+router.use(authorize('ADMIN'));
+const createSchema = z.object({ email: z.string().email(), name: z.string().min(2), password: z.string().min(10), role: z.enum(['ADMIN','OPERATOR','VIEWER']).default('OPERATOR') });
+
+router.get('/', async (_req, res) => res.json(await prisma.user.findMany({ select: { id:true,email:true,name:true,role:true,active:true,createdAt:true,updatedAt:true }, orderBy:{createdAt:'desc'} })));
+router.post('/', async (req, res) => {
+  const input = createSchema.parse(req.body);
+  const user = await prisma.user.create({ data: { email: input.email.toLowerCase(), name: input.name, passwordHash: await bcrypt.hash(input.password, 12), role: input.role } });
+  await audit(req, 'user.created', 'User', user.id, { role: user.role });
+  return res.status(201).json({ id:user.id,email:user.email,name:user.name,role:user.role,active:user.active });
+});
+router.patch('/:id/status', async (req, res) => {
+  const { active } = z.object({ active:z.boolean() }).parse(req.body);
+  const user = await prisma.user.update({ where:{id:req.params.id}, data:{active} });
+  await audit(req, active ? 'user.enabled' : 'user.disabled', 'User', user.id);
+  return res.json({ id:user.id,active:user.active });
+});
+
+export default router;
