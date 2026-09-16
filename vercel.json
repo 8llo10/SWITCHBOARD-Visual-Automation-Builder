@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd SWITCHBOARD && npm run build",
+  "installCommand": "cd SWITCHBOARD && npm install",
+  "outputDirectory": "SWITCHBOARD/.next",
+  "framework": "nextjs"
+}
