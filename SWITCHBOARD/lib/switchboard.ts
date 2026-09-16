@@ -1,1 +1,6 @@
-export async function sb<T=any>(path:string,init?:RequestInit):Promise<T>{const r=await fetch(`/api/switchboard${path}`,{...init,headers:{'content-type':'application/json',...(init?.headers||{})}});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`Request failed ${r.status}`);return data}
+type Options=RequestInit&{auth?:boolean};
+const TOKEN='switchboard_token',USER='switchboard_user';
+export function setSession(token:string,user:unknown){if(typeof window==='undefined')return;localStorage.setItem(TOKEN,token);localStorage.setItem(USER,JSON.stringify(user))}
+export function clearSession(){if(typeof window==='undefined')return;localStorage.removeItem(TOKEN);localStorage.removeItem(USER)}
+export function getSession(){if(typeof window==='undefined')return null;const token=localStorage.getItem(TOKEN);if(!token)return null;try{return{token,user:JSON.parse(localStorage.getItem(USER)||'null')}}catch{return{token,user:null}}}
+export async function sb<T=any>(path:string,init?:Options):Promise<T>{const session=getSession();const headers:any={'content-type':'application/json',...(init?.headers||{})};if(init?.auth!==false&&session?.token)headers.authorization=`Bearer ${session.token}`;const r=await fetch(`/api/switchboard${path}`,{...init,headers});const data=await r.json().catch(()=>({}));if(r.status===401&&init?.auth!==false&&typeof window!=='undefined'){clearSession();if(!location.pathname.startsWith('/login'))location.href='/login'}if(!r.ok)throw new Error(data.error||`Request failed ${r.status}`);return data}
