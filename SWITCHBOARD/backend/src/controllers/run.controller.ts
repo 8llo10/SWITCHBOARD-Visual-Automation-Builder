@@ -1,3 +1,7 @@
 import type{Request,Response}from'express';import*as service from'../services/run.service.js';const param=(v:string|string[])=>Array.isArray(v)?v[0]:v;
+export async function list(req:Request,res:Response){return res.json(await service.list(req.query.workflowId?String(req.query.workflowId):undefined,req.query.status?String(req.query.status):undefined))}
 export async function get(req:Request,res:Response){return res.json(await service.get(param(req.params.id)))}
 export async function approve(req:Request,res:Response){const result=await service.approve(param(req.params.id),String(req.body?.approvedBy||req.user?.email||'operator'));if(!result)return res.status(409).json({error:'No approval is waiting'});return res.status(202).json(result)}
+export async function reject(req:Request,res:Response){const result=await service.reject(param(req.params.id),String(req.body?.rejectedBy||req.user?.email||'operator'),req.body?.reason?String(req.body.reason):undefined);if(!result)return res.status(409).json({error:'No approval is waiting'});return res.json(result)}
+export async function cancel(req:Request,res:Response){const result=await service.cancel(param(req.params.id),String(req.user?.email||'operator'));if(!result)return res.status(409).json({error:'Run is already terminal'});return res.json(result)}
+export async function retry(req:Request,res:Response){const result=await service.retry(param(req.params.id));if(!result)return res.status(409).json({error:'Only failed or cancelled runs can be retried'});return res.status(202).json(result)}
