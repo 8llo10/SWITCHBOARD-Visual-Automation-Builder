@@ -7,28 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum WorkflowStatus {
-  DRAFT
-  ACTIVE
-  ARCHIVED
-}
+enum Role { ADMIN OPERATOR VIEWER }
+enum WorkflowStatus { DRAFT ACTIVE ARCHIVED }
+enum RunStatus { QUEUED RUNNING WAITING SUCCEEDED FAILED CANCELLED }
+enum StepStatus { PENDING RUNNING SUCCEEDED FAILED SKIPPED WAITING }
 
-enum RunStatus {
-  QUEUED
-  RUNNING
-  WAITING
-  SUCCEEDED
-  FAILED
-  CANCELLED
-}
-
-enum StepStatus {
-  PENDING
-  RUNNING
-  SUCCEEDED
-  FAILED
-  SKIPPED
-  WAITING
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(OPERATOR)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  workflows    Workflow[]
+  auditEvents  AuditEvent[]
 }
 
 model Workflow {
@@ -38,10 +32,27 @@ model Workflow {
   description String?
   status      WorkflowStatus @default(DRAFT)
   definition  Json
+  version     Int            @default(1)
+  ownerId     String?
+  owner       User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  runs        WorkflowRun[]
+  triggers    Trigger[]
+  @@index([ownerId, updatedAt])
+}
 
-  runs WorkflowRun[]
+model Trigger {
+  id         String   @id @default(cuid())
+  workflowId String
+  workflow   Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  type       String
+  enabled    Boolean  @default(true)
+  config     Json     @default("{}")
+  secret     String?  @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@index([workflowId, enabled])
 }
 
 model WorkflowRun {
@@ -56,11 +67,10 @@ model WorkflowRun {
   finishedAt     DateTime?
   error          String?
   createdAt      DateTime  @default(now())
-
-  steps WorkflowStep[]
-  logs  RunLog[]
-
+  steps          WorkflowStep[]
+  logs           RunLog[]
   @@index([workflowId, createdAt])
+  @@index([status, createdAt])
 }
 
 model WorkflowStep {
@@ -78,7 +88,6 @@ model WorkflowStep {
   startedAt  DateTime?
   finishedAt DateTime?
   createdAt  DateTime    @default(now())
-
   @@unique([runId, nodeId, attempt])
 }
 
@@ -91,7 +100,6 @@ model RunLog {
   message   String
   meta      Json?
   createdAt DateTime    @default(now())
-
   @@index([runId, createdAt])
 }
 
@@ -104,6 +112,7 @@ model DirectoryUser {
   active     Boolean  @default(true)
   groups     String[] @default([])
   licenses   String[] @default([])
+  custom     Json     @default("{}")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -115,4 +124,18 @@ model Credential {
   encryptedData String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+  @@index([actorId, createdAt])
+  @@index([entity, entityId])
 }
