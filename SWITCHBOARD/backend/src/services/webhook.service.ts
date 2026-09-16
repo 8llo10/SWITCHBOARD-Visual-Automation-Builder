@@ -1,0 +1,2 @@
+import{prisma}from'../config/prisma.js';import{executeRun}from'../engine/engine.js';
+export async function trigger(slug:string,payload:unknown){const workflow=await prisma.workflow.findUnique({where:{slug}});if(!workflow||workflow.status==='ARCHIVED')return null;const run=await prisma.workflowRun.create({data:{workflowId:workflow.id,triggerType:'webhook',triggerPayload:(payload||{}) as any}});void executeRun(run.id);return{runId:run.id,status:'QUEUED' as const}}
