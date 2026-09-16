@@ -1,304 +1,127 @@
 # SWITCHBOARD — Visual IT Automation Builder
 
-SWITCHBOARD is a visual IT automation platform. Build workflows by connecting nodes, submit real trigger data, and execute the graph through a persistent backend engine.
+SWITCHBOARD is a full-stack visual IT automation control plane: design node-based workflows, persist them, execute real integrations, inspect step/run logs, and manage access through authenticated roles.
 
-## What is real in v1.0
+## Production feature set
 
-- Visual drag-and-drop workflow builder (Next.js + React Flow)
-- Express/TypeScript API
-- PostgreSQL persistence with Prisma
-- Graph execution engine (branching, retries, continue-on-failure, run context)
-- Persistent workflow runs, steps, and logs
-- Real internal directory actions: Create User, Disable User, Add Group, Assign License
-- Real HTTP requests and health checks
-- Real PostgreSQL query node
-- Real SSH / remote PowerShell execution through SSH
-- SMTP email node
-- Delay and approval nodes (approval can resume a waiting run)
-- Webhook trigger endpoint
-- AES-256-GCM encrypted credentials store
-- Server-side Next.js API proxy so the backend API key is not exposed in browser code
+- Next.js 15 + React 19 + React Flow visual workflow editor
+- Express/TypeScript backend with PostgreSQL + Prisma
+- Signed session authentication with scrypt password hashing
+- RBAC: `ADMIN`, `OPERATOR`, `VIEWER`
+- Workflow ownership, authorization, definition validation and versioning
+- Persistent workflow runs, steps and structured logs
+- Branching, retries, continue-on-failure and execution context
+- Manual and webhook triggers
+- Internal directory: Create/Disable User, Add Group, Assign License
+- HTTP Request + Health Check executors
+- PostgreSQL query executor
+- SSH and remote PowerShell executors
+- SMTP Email executor
+- Delay and Approval/wait nodes
+- AES-256-GCM encrypted credential store
+- Audit events for privileged/domain changes
+- Admin user-management API
+- Responsive visual editor and login experience
 
-> Microsoft Entra ID / Microsoft 365 / Active Directory are represented by connector-ready nodes. The included internal directory makes onboarding fully executable without requiring a corporate tenant. To operate against a real enterprise tenant, add that provider's credentials/API calls instead of pretending a provisioning action succeeded.
+Microsoft Entra ID / Microsoft 365 / Active Directory nodes are connector-ready. The internal directory keeps the demo fully executable without falsely claiming access to a corporate tenant.
 
-## Project structure
+## Architecture
 
 ```text
-SWITCHBOARD/
-├─ app/                         # Next.js visual frontend
-│  └─ api/switchboard/          # secure server-side proxy to backend
-├─ lib/                         # frontend API client
-├─ backend/
-│  ├─ prisma/
-│  │  ├─ schema.prisma          # workflows, runs, steps, logs, directory, credentials
-│  │  └─ seed.ts
-│  └─ src/
-│     ├─ config/                # env + Prisma
-│     ├─ engine/
-│     │  ├─ engine.ts           # graph runner
-│     │  └─ executors/          # node implementations
-│     ├─ middleware/            # auth + errors
-│     ├─ routes/                # workflows, runs, webhooks, credentials...
-│     ├─ services/
-│     ├─ types/
-│     └─ utils/
-├─ docker-compose.yml           # local PostgreSQL
-└─ .env.local.example           # frontend → backend connection
+Browser / Next.js
+  ├── Login + visual workflow editor
+  └── /api/switchboard/* proxy
+              │ Bearer session
+              ▼
+Express API
+  ├── Auth / RBAC / ownership
+  ├── Workflows + Triggers
+  ├── Runs + Approvals
+  ├── Directory + Credentials
+  └── Audit
+              │
+              ▼
+Execution Engine
+  ├── graph traversal / routing
+  ├── retry / failure policy
+  └── executors (HTTP, DB, SSH, PowerShell, Email, IT actions)
+              │
+              ▼
+PostgreSQL / Prisma
 ```
 
-## Run locally on Windows
+## Local setup
 
-### 1. Requirements
-
-Install:
-- Node.js 20+
-- Docker Desktop (easiest PostgreSQL option)
-
-### 2. Start PostgreSQL
-
-From the project root:
+### Database + backend
 
 ```bash
-docker compose up -d
-```
-
-### 3. Configure backend
-
-```bash
-cd backend
-copy .env.example .env
+cd SWITCHBOARD/backend
+cp .env.example .env
 npm install
-npx prisma generate
-npx prisma db push
+npm run prisma:generate
+npm run db:push
 npm run seed
 npm run dev
 ```
 
-Backend should start on:
+Generate a 64-character hexadecimal `CREDENTIAL_ENCRYPTION_KEY`. Change `JWT_SECRET` and `ADMIN_PASSWORD` before exposing the service.
 
-```text
-http://localhost:4000
-```
-
-Health check:
-
-```text
-http://localhost:4000/health
-```
-
-### 4. Configure frontend
-
-Open a second terminal in the project root:
+### Frontend
 
 ```bash
-copy .env.local.example .env.local
+cd SWITCHBOARD
+cp .env.local.example .env.local
 npm install
 npm run dev
 ```
 
-Open:
+Open `http://localhost:3000/login` and use the admin credentials configured in the backend environment.
 
-```text
-http://localhost:3000
+## Deployment
+
+### Frontend — Vercel
+
+The repository root contains `vercel.json`, so importing the GitHub repository directly is supported. Alternatively set Vercel **Root Directory** to `SWITCHBOARD`.
+
+Required frontend environment variable:
+
+```env
+SWITCHBOARD_API_URL=https://YOUR-BACKEND/api
 ```
 
-The header should show **Engine connected**.
+### Backend — Render / Docker
 
-## Try the real Employee Onboarding workflow
+Deploy `SWITCHBOARD/backend` using the included `Dockerfile` (or `render.yaml`). Configure:
 
-Click **Run workflow** and enter:
-
-```text
-Full name: Ghala AlHashmi
-Email: ghala@switchboard.dev
-Department: IT
-Job title: Software Engineer
+```env
+DATABASE_URL=postgresql://...
+FRONTEND_URL=https://YOUR-VERCEL-DOMAIN
+JWT_SECRET=at-least-32-random-characters
+ADMIN_EMAIL=your-admin-email
+ADMIN_PASSWORD=a-strong-password
+CREDENTIAL_ENCRYPTION_KEY=64-hex-characters
 ```
 
-The backend will persist the run and execute:
+Optional SMTP variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 
-```text
-New Employee
-  → Create User
-  → Is IT?
-      TRUE  → IT Group → Assign GitHub
-      FALSE → Finance Group → Assign Excel
-```
-
-For `Department = IT`, check the stored user:
+After first database provisioning run:
 
 ```bash
-curl -H "x-api-key: dev-switchboard-key" http://localhost:4000/api/directory/users
+npm run db:push
+npm run seed
 ```
 
-You will see the actual PostgreSQL-backed directory record with its group/license assignments.
+## API surface
 
-## Important API routes
-
-```text
-GET    /health
-GET    /api/workflows
-POST   /api/workflows
-PUT    /api/workflows/:id
-POST   /api/workflows/:id/run
-GET    /api/workflows/:id/runs
-GET    /api/runs/:id
-POST   /api/runs/:id/approve
-POST   /api/webhooks/:workflowSlug
-GET    /api/directory/users
-GET    /api/credentials
-POST   /api/credentials
-PUT    /api/credentials/:id
-DELETE /api/credentials/:id
-```
-
-Protected `/api/*` routes require `x-api-key`. Webhook endpoints are intentionally callable without the API key; for a production deployment, add per-workflow signing secrets/HMAC verification before exposing sensitive workflows publicly.
-
-## Node configuration examples
-
-### HTTP Request
-
-```json
-{
-  "url": "https://httpbin.org/post",
-  "method": "POST",
-  "headers": { "content-type": "application/json" },
-  "body": { "email": "{{trigger.email}}" }
-}
-```
-
-### Health Check
-
-```json
-{
-  "url": "https://example.com",
-  "timeoutMs": 8000
-}
-```
-
-### Condition
-
-```json
-{
-  "field": "trigger.department",
-  "operator": "equals",
-  "value": "IT"
-}
-```
-
-Condition outgoing edges use:
-
-```json
-{ "data": { "when": "true" } }
-```
-
-or
-
-```json
-{ "data": { "when": "false" } }
-```
-
-### PostgreSQL
-
-Prefer an encrypted Credential and reference it from the node instead of putting passwords into workflow JSON.
-
-Credential data:
-
-```json
-{
-  "connectionString": "postgresql://...",
-  "ssl": true
-}
-```
-
-Node config:
-
-```json
-{
-  "credentialRef": "CREDENTIAL_ID",
-  "query": "select now() as server_time"
-}
-```
-
-### SSH / PowerShell
-
-Credential data:
-
-```json
-{
-  "host": "server.example.internal",
-  "port": 22,
-  "username": "automation",
-  "privateKey": "-----BEGIN OPENSSH PRIVATE KEY-----..."
-}
-```
-
-Node config:
-
-```json
-{
-  "credentialRef": "CREDENTIAL_ID",
-  "command": "hostname"
-}
-```
-
-For PowerShell on a remote Windows host, use an SSH-enabled Windows server and a command such as:
-
-```json
-{
-  "credentialRef": "CREDENTIAL_ID",
-  "command": "powershell -NoProfile -Command \"Get-Service | Select-Object -First 5\""
-}
-```
-
-## Deploy
-
-Recommended free/low-cost split:
-
-- **Frontend:** Vercel
-- **Backend:** Render
-- **PostgreSQL:** Neon / Supabase / Render PostgreSQL
-
-### Backend environment variables
-
-Set all values from `backend/.env.example`, especially:
-
-```text
-DATABASE_URL
-FRONTEND_URL=https://your-switchboard.vercel.app
-API_KEY=<long-random-secret>
-CREDENTIAL_ENCRYPTION_KEY=<64-hex-character-key>
-```
-
-Render build command:
-
-```bash
-npm install && npx prisma generate && npm run build
-```
-
-Render start command:
-
-```bash
-npm start
-```
-
-Set the Render root directory to:
-
-```text
-backend
-```
-
-Run `npx prisma db push` once against the production database (or switch to migrations before production use), then `npm run seed` if you want the sample onboarding workflow.
-
-### Frontend environment variables on Vercel
-
-```text
-SWITCHBOARD_API_URL=https://YOUR-BACKEND.onrender.com/api
-SWITCHBOARD_API_KEY=<same backend API key>
-```
-
-The API key stays on the Next.js server proxy and is not referenced through a `NEXT_PUBLIC_*` variable.
+- `POST /api/auth/login`, `GET /api/auth/me`
+- `GET/POST/PUT/DELETE /api/workflows`
+- `POST /api/workflows/:id/run`, `GET /api/workflows/:id/runs`
+- `GET /api/runs/:id`, approval/resume operations
+- `/api/directory` IT directory operations
+- `/api/credentials` encrypted credential management
+- `/api/users` admin-only account management
+- `/api/webhooks/*` public trigger boundary with trigger secrets
 
 ## Security notes
 
-This is an automation engine, so treat credentials and remote-execution nodes as privileged infrastructure. Do not put production passwords directly in workflow JSON, restrict the backend network/API, use dedicated least-privilege service accounts, add signed webhooks before production exposure, and isolate SSH/PowerShell runners when connecting to real corporate systems.
+Never commit `.env` files or production credentials. Keep database/SSH/SMTP secrets in the encrypted credential store or deployment environment. Use HTTPS in production, rotate secrets after accidental exposure, and restrict infrastructure credentials to least privilege.
