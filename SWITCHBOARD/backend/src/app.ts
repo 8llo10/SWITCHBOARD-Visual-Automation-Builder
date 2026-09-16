@@ -14,6 +14,7 @@ import runs from './routes/runs.js';
 import webhooks from './routes/webhooks.js';
 import directory from './routes/directory.js';
 import credentials from './routes/credentials.js';
+import health from './routes/health.js';
 
 export const app = express();
 app.disable('x-powered-by');
@@ -24,7 +25,8 @@ app.use(cors({origin:env.FRONTEND_URL.split(',').map(v=>v.trim()),credentials:fa
 app.use(express.json({limit:'1mb'}));
 app.use(morgan('combined'));
 
-app.get('/health',(_req,res)=>res.json({ok:true,service:'switchboard-api',version:'2.0.0',timestamp:new Date().toISOString()}));
+app.get('/',(_req,res)=>res.json({name:'SWITCHBOARD API',version:'2.0.0',status:'online',health:'/health',api:'/api'}));
+app.use('/health',health);
 app.use('/api/auth',auth);
 app.use('/api/webhooks',webhooks);
 app.use('/api',authenticate);
