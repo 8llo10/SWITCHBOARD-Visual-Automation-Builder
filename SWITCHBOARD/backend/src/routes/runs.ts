@@ -1,4 +1,1 @@
-import {Router} from 'express';import {prisma} from '../config/prisma.js';import {executeRun} from '../engine/engine.js';const r=Router();
-r.get('/:id',async(req,res)=>res.json(await prisma.workflowRun.findUniqueOrThrow({where:{id:req.params.id},include:{steps:{orderBy:{createdAt:'asc'}},logs:{orderBy:{createdAt:'asc'}}}})));
-r.post('/:id/approve',async(req,res)=>{const run=await prisma.workflowRun.findUniqueOrThrow({where:{id:req.params.id},include:{steps:{where:{status:'WAITING'},orderBy:{createdAt:'desc'},take:1}}});const step=run.steps[0];if(!step)return res.status(409).json({error:'No approval is waiting'});await prisma.workflowStep.update({where:{id:step.id},data:{status:'SUCCEEDED',output:{approved:true,approvedBy:req.body.approvedBy||'operator'},finishedAt:new Date()}});void executeRun(run.id,step.nodeId);res.status(202).json({runId:run.id,status:'RUNNING'})});
-export default r;
+import{Router}from'express';import*as controller from'../controllers/run.controller.js';const router=Router();router.get('/:id',controller.get);router.post('/:id/approve',controller.approve);export default router;
