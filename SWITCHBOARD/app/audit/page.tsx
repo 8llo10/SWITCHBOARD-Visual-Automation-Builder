@@ -1,6 +1,6 @@
 'use client';
 import {useState} from 'react';
-import {Audit,Search} from 'lucide-react';
+import {Search} from 'lucide-react';
 import {Shell} from '../../components/Shell';
 import {DataTable,RemoteData,formatDate} from '../../components/DataView';
 export default function AuditPage(){const[action,setAction]=useState('');const[entity,setEntity]=useState('');const qs=new URLSearchParams();if(action)qs.set('action',action);if(entity)qs.set('entity',entity);qs.set('limit','200');return <Shell title="Audit trail" eyebrow="GOVERNANCE & ACCOUNTABILITY"><div className="stack-lg"><section className="panel toolbar-panel"><div><p className="eyebrow">FILTER EVENTS</p><h2>Who changed what?</h2></div><div className="filter-row"><div className="search-field"><Search size={14}/><input value={action} onChange={e=>setAction(e.target.value)} placeholder="Action contains…"/></div><input value={entity} onChange={e=>setEntity(e.target.value)} placeholder="Entity e.g. Workflow"/></div></section><RemoteData endpoint={`/audit?${qs.toString()}`} emptyTitle="No audit events yet">{(rows:any[])=><DataTable rows={rows} columns={[{key:'createdAt',label:'Time',render:r=>formatDate(r.createdAt)},{key:'action',label:'Action'},{key:'entity',label:'Entity'},{key:'entityId',label:'Entity ID'},{key:'actor',label:'Actor',render:r=>r.actor?`${r.actor.name} · ${r.actor.role}`:'System'},{key:'ip',label:'Source IP'},{key:'metadata',label:'Metadata',render:r=><code className="inline-code">{r.metadata?JSON.stringify(r.metadata):'—'}</code>}]}/>}</RemoteData></div></Shell>}
