@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import {usePathname,useRouter} from 'next/navigation';
-import {Activity,Audit,Boxes,Braces,ChevronRight,Database,KeyRound,LayoutDashboard,LogOut,Play,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
+import {Activity,Boxes,Braces,ChevronRight,Database,KeyRound,LayoutDashboard,LogOut,Play,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
 import {Logo} from './Logo';
 import {clearSession,getSession} from '../lib/switchboard';
 
@@ -12,7 +12,7 @@ const sections=[
   {href:'/triggers',label:'Triggers',icon:Zap},
   {href:'/credentials',label:'Credentials',icon:KeyRound},
   {href:'/directory',label:'Directory',icon:Users},
-  {href:'/audit',label:'Audit',icon:Audit},
+  {href:'/audit',label:'Audit',icon:ScrollText},
   {href:'/users',label:'Users',icon:ShieldCheck},
   {href:'/settings',label:'Settings',icon:Settings},
 ];
