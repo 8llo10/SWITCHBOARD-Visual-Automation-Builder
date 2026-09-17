@@ -1,0 +1,6 @@
+'use client';
+import {useState} from 'react';
+import {PlayCircle,RefreshCw} from 'lucide-react';
+import {Shell} from '../../components/Shell';
+import {Badge,DataTable,RemoteData,formatDate} from '../../components/DataView';
+export default function RunsPage(){const[status,setStatus]=useState('');return <Shell title="Runs & logs" eyebrow="EXECUTION OBSERVABILITY"><div className="stack-lg"><section className="panel toolbar-panel"><div><p className="eyebrow">FILTER</p><h2>Execution history</h2></div><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option><option>QUEUED</option><option>RUNNING</option><option>WAITING</option><option>SUCCEEDED</option><option>FAILED</option><option>CANCELLED</option></select></section><RemoteData endpoint={`/runs${status?`?status=${status}`:''}`} emptyTitle="No runs yet">{(rows:any[])=><DataTable rows={rows} href={r=>`/runs/${r.id}`} columns={[{key:'workflow',label:'Workflow',render:r=>r.workflow?.name||r.workflowId},{key:'status',label:'Status',render:r=><Badge value={r.status}/>},{key:'triggerType',label:'Trigger'},{key:'createdAt',label:'Created',render:r=>formatDate(r.createdAt)},{key:'_count',label:'Steps',render:r=>r._count?.steps??'—'}]}/>}</RemoteData></div></Shell>}
