@@ -10,6 +10,8 @@ const schema = z.object({
   ADMIN_EMAIL: z.string().email().default('admin@switchboard.local'),
   ADMIN_PASSWORD: z.string().min(10).default('ChangeMe123!'),
   ADMIN_NAME: z.string().default('Switchboard Admin'),
+  EMAIL_VERIFY_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
+  EMAIL_VERIFY_RESEND_SECONDS: z.coerce.number().int().min(30).max(3600).default(60),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),
