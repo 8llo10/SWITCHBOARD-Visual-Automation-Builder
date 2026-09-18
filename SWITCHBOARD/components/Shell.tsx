@@ -2,53 +2,27 @@
 import Link from 'next/link';
 import {useEffect,useState} from 'react';
 import {usePathname,useRouter} from 'next/navigation';
-import {Activity,Boxes,Braces,ChevronRight,Database,KeyRound,LayoutDashboard,LogOut,Play,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
-import {Logo} from './Logo';
+import {Activity,Database,LogOut,Network,Play,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap,KeyRound} from 'lucide-react';
 import {clearSession,getSession} from '../lib/switchboard';
 
 const sections=[
-  {href:'/dashboard',label:'Overview',icon:LayoutDashboard},
-  {href:'/workflows',label:'Workflows',icon:Workflow},
-  {href:'/runs',label:'Runs & logs',icon:Play},
-  {href:'/triggers',label:'Triggers',icon:Zap},
-  {href:'/credentials',label:'Credentials',icon:KeyRound},
-  {href:'/directory',label:'Directory',icon:Users},
-  {href:'/audit',label:'Audit',icon:ScrollText},
-  {href:'/users',label:'Users',icon:ShieldCheck},
-  {href:'/settings',label:'Settings',icon:Settings},
+  {href:'/dashboard',label:'OVERVIEW',icon:Activity},
+  {href:'/workflows',label:'WORKFLOWS',icon:Workflow},
+  {href:'/runs',label:'RUNS',icon:Play},
+  {href:'/triggers',label:'TRIGGERS',icon:Zap},
+  {href:'/credentials',label:'SECRETS',icon:KeyRound},
+  {href:'/directory',label:'DIRECTORY',icon:Users},
+  {href:'/audit',label:'AUDIT',icon:ScrollText},
+  {href:'/users',label:'USERS',icon:ShieldCheck},
+  {href:'/settings',label:'SYSTEM',icon:Settings},
 ];
 
 export function Shell({children,title,eyebrow,actions}:{children:React.ReactNode;title:string;eyebrow?:string;actions?:React.ReactNode}){
-  const path=usePathname();
-  const router=useRouter();
-  const [session,setSessionState]=useState<any>(undefined);
-
-  useEffect(()=>{
-    const current=getSession() as any;
-    if(!current?.token){router.replace('/login');return;}
-    setSessionState(current);
-  },[router]);
-
+  const path=usePathname(),router=useRouter();const[session,setSessionState]=useState<any>(undefined),[open,setOpen]=useState(false);
+  useEffect(()=>{const current=getSession() as any;if(!current?.token){router.replace('/login');return}setSessionState(current)},[router]);
+  if(session===undefined)return <div className="auth-page"><div className="auth-card"><p className="eyebrow">SWITCHBOARD</p><h2>Checking session…</h2></div></div>;
   const logout=()=>{clearSession();router.replace('/login')};
-  if(session===undefined)return <div className="auth-page"><div className="auth-card liquid-glass"><p className="eyebrow">SWITCHBOARD</p><h2>Checking session…</h2></div></div>;
-
-  return <div className="app-shell">
-    <aside className="sidebar glass-panel">
-      <Link href="/dashboard" className="sidebar-logo"><Logo size={44}/></Link>
-      <nav className="sidebar-nav">{sections.map(({href,label,icon:Icon})=>{const active=path===href||path.startsWith(href+'/');return <Link key={href} href={href} className={`nav-item ${active?'active':''}`}><Icon size={18}/><span>{label}</span>{active&&<ChevronRight size={14} className="nav-arrow"/>}</Link>})}</nav>
-      <div className="sidebar-meta">
-        <div className="status-row"><span className="status-dot"/>Authenticated session</div>
-        <div className="profile-card"><div className="avatar">{String(session.user?.name||'S').slice(0,1).toUpperCase()}</div><div><strong>{session.user?.name||'Operator'}</strong><small>{session.user?.role||'SESSION'}</small></div><button className="icon-btn" onClick={logout} aria-label="Logout"><LogOut size={16}/></button></div>
-      </div>
-    </aside>
-    <main className="workspace">
-      <header className="workspace-header"><div><p className="eyebrow">{eyebrow||'SWITCHBOARD CONTROL PLANE'}</p><h1>{title}</h1></div><div className="header-actions">{actions}<span className="api-pill"><Activity size={14}/> LIVE</span></div></header>
-      <section className="workspace-content">{children}</section>
-    </main>
-  </div>
+  return <div className="app-shell"><header className="workspace-header"><div className="cp-brand"><Network size={16}/><span>SWITCHBOARD</span><i>CONTROL PLANE</i></div><nav className="cp-nav">{sections.slice(0,6).map(({href,label})=><Link key={href} className={path===href||path.startsWith(href+'/')?'active':''} href={href}>{label}</Link>)}</nav><div className="header-actions">{actions}<span className="api-pill"><Activity size={12}/> LIVE</span><button className="ghost-icon" onClick={()=>setOpen(v=>!v)}>{String(session.user?.name||'S').slice(0,1).toUpperCase()}</button></div>{open&&<div className="cp-menu"><b>{session.user?.name}</b><small>{session.user?.role}</small>{sections.slice(6).map(({href,label,icon:Icon})=><Link key={href} href={href}><Icon size={13}/>{label}</Link>)}<button onClick={logout}><LogOut size={13}/> LOG OUT</button></div>}</header><main className="workspace"><div className="page-titlebar"><div><p className="eyebrow">{eyebrow||'SWITCHBOARD'}</p><h1>{title}</h1></div></div><section className="workspace-content">{children}</section></main></div>
 }
 
-export function EmptyState({icon='workflow',title,body,action}:{icon?:string;title:string;body:string;action?:React.ReactNode}){
-  const Icon=icon==='db'?Database:icon==='code'?Braces:icon==='blocks'?Boxes:Workflow;
-  return <div className="empty-state"><div className="empty-icon"><Icon size={26}/></div><h3>{title}</h3><p>{body}</p>{action}</div>
-}
+export function EmptyState({title,body,action}:{title:string;body:string;action?:React.ReactNode}){return <div className="empty-state"><div className="empty-icon"><Database size={24}/></div><h3>{title}</h3><p>{body}</p>{action}</div>}
