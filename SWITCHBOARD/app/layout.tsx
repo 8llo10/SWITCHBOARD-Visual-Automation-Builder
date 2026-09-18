@@ -4,6 +4,7 @@ import './control.css';
 import './automation.css';
 import './editor-extra.css';
 import './credentials-extra.css';
+import './run-detail.css';
 import './landing-neo.css';
 import './auth-neo.css';
 export const metadata={
