@@ -29,6 +29,7 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   if(kind==='postgres'&&(!c.connectionString&&!c.credentialRef||!c.query))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:'PostgreSQL requires a connection/credential and query'});
   if((kind==='ssh'||kind==='powershell')&&((!c.host||!c.username)&&!c.credentialRef||!c.command))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:`${kind} requires connection details/credential and command`});
  }
+ if(!def.nodes.some(n=>['trigger','webhook'].includes(String(n.data?.kind))))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes'],message:'Workflow requires at least one trigger node'});
  const edgeIds=new Set<string>();
  for(const[i,e]of def.edges.entries()){
   if(edgeIds.has(e.id))ctx.addIssue({code:z.ZodIssueCode.custom,path:['edges',i,'id'],message:`Duplicate edge id: ${e.id}`});
