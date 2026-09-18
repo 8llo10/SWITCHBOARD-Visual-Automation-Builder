@@ -1,0 +1,2 @@
+import test from'node:test';import assert from'node:assert/strict';import{hashPassword,verifyPassword}from'./password.js';
+test('password hashes are salted and verifiable',async()=>{const a=await hashPassword('correct-horse-123');const b=await hashPassword('correct-horse-123');assert.notEqual(a,b);assert.equal(await verifyPassword('correct-horse-123',a),true);assert.equal(await verifyPassword('wrong-password',a),false)});
