@@ -1,1 +1,1 @@
-import{Router}from'express';import*as controller from'../controllers/health.controller.js';const router=Router();router.get('/',controller.live);router.get('/live',controller.live);router.get('/ready',controller.ready);export default router;
+import{Router}from'express';import*as controller from'../controllers/health.controller.js';const router=Router();router.get('/',controller.live);router.get('/live',controller.live);router.get('/ready',controller.ready);router.get('/metrics',controller.metrics);export default router;
