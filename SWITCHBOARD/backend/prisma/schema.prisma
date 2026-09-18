@@ -39,16 +39,31 @@ enum StepStatus {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  name         String
-  passwordHash String
-  role         Role         @default(OPERATOR)
-  active       Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  workflows    Workflow[]
-  auditEvents  AuditEvent[]
+  id                  String              @id @default(cuid())
+  email               String              @unique
+  name                String
+  passwordHash        String
+  role                Role                @default(OPERATOR)
+  active              Boolean             @default(true)
+  emailVerifiedAt     DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  workflows           Workflow[]
+  auditEvents         AuditEvent[]
+  verificationTokens  EmailVerificationToken[]
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  usedAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }
 
 model Workflow {
