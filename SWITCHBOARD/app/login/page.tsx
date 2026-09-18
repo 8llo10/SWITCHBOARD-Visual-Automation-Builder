@@ -2,21 +2,6 @@
 import {FormEvent,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
-import {ArrowLeft,LockKeyhole,ShieldCheck} from 'lucide-react';
-import {Logo} from '../../components/Logo';
+import {ArrowLeft,LockKeyhole,Network} from 'lucide-react';
 import {sb,setSession} from '../../lib/switchboard';
-
-export default function Login(){
-  const router=useRouter();
-  const[email,setEmail]=useState('');
-  const[password,setPassword]=useState('');
-  const[error,setError]=useState('');
-  const[busy,setBusy]=useState(false);
-  async function submit(e:FormEvent){
-    e.preventDefault();setBusy(true);setError('');
-    try{const r=await sb<any>('/auth/login',{method:'POST',body:JSON.stringify({email,password}),auth:false} as any);setSession(r.token,r.user);router.replace('/dashboard')}
-    catch(e:any){setError(e?.message||'Unable to sign in. Check your credentials and try again.')}
-    finally{setBusy(false)}
-  }
-  return <main className="auth-page"><div className="auth-orb auth-orb-a"/><div className="auth-orb auth-orb-b"/><Link href="/" className="auth-back"><ArrowLeft size={15}/> Back to overview</Link><section className="auth-grid"><div className="auth-copy"><Logo size={62}/><p className="eyebrow">SWITCHBOARD CONTROL PLANE</p><h1>One place to design, execute and govern IT automation.</h1><p>Secure access to workflows, run history, credentials, triggers, directory operations and audit events.</p><div className="auth-points"><span><ShieldCheck/> Role-based access control</span><span><LockKeyhole/> Encrypted credential storage</span></div></div><form className="auth-card liquid-glass" onSubmit={submit}><div><span className="eyebrow">SECURE ACCESS</span><h2>Sign in</h2><p>Use your SWITCHBOARD platform account.</p></div><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="username" placeholder="you@example.com"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password" placeholder="Enter your password"/></label>{error&&<div className="login-error">{error}</div>}<button className="primary-btn auth-submit" disabled={busy}><LockKeyhole size={16}/>{busy?'Authenticating…':'Enter control plane'}</button><small className="auth-note">New to SWITCHBOARD? <Link href="/signup">Create an account</Link></small></form></section></main>;
-}
+export default function Login(){const router=useRouter();const[email,setEmail]=useState(''),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError('');try{const r=await sb<any>('/auth/login',{method:'POST',body:JSON.stringify({email,password}),auth:false} as any);setSession(r.token,r.user);router.replace('/dashboard')}catch(e:any){setError(e?.message||'Unable to sign in')}finally{setBusy(false)}}return <main className="terminal-auth"><Link href="/" className="terminal-back"><ArrowLeft size={13}/> HOME</Link><div className="terminal-auth-wrap"><section className="terminal-auth-copy"><div className="terminal-mark"><Network size={18}/><span>SWITCHBOARD</span></div><small>SECURE CONTROL PLANE</small><h1>Authenticate<br/>to the <em>event bus.</em></h1><p>Access workflow topology, live executions, directory actions, triggers, secrets and audit history.</p><div className="terminal-lines"><span>01 · ROLE-BASED ACCESS</span><span>02 · ENCRYPTED CREDENTIALS</span><span>03 · AUDITABLE EXECUTION</span></div></section><form className="terminal-form" onSubmit={submit}><header><span>AUTH / SIGN IN</span><i/></header><label>EMAIL<input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="username" required placeholder="operator@example.com"/></label><label>PASSWORD<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required placeholder="••••••••••••"/></label>{error&&<div className="terminal-error">{error}</div>}<button className="terminal-submit" disabled={busy}><LockKeyhole size={13}/>{busy?'AUTHENTICATING…':'ENTER CONTROL PLANE'}</button><small>NO ACCOUNT? <Link href="/signup">CREATE ONE</Link></small></form></div></main>}
