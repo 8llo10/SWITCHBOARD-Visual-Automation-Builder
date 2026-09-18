@@ -1,0 +1,8 @@
+import{prisma}from'../config/prisma.js';import{executeRun}from'../engine/engine.js';
+let timer:NodeJS.Timeout|undefined;let startedAt:Date|undefined;const active=new Set<string>();const CONCURRENCY=3;
+async function recoverInterrupted(){const runs=await prisma.workflowRun.findMany({where:{status:'RUNNING'},select:{id:true}});if(!runs.length)return;const ids=runs.map(r=>r.id);await prisma.workflowStep.updateMany({where:{runId:{in:ids},status:'RUNNING'},data:{status:'FAILED',error:'Execution interrupted by process restart',finishedAt:new Date()}});await prisma.workflowRun.updateMany({where:{id:{in:ids}},data:{status:'QUEUED',error:null,finishedAt:null}})}
+async function launch(id:string){const claimed=await prisma.workflowRun.updateMany({where:{id,status:'QUEUED'},data:{status:'RUNNING',startedAt:new Date()}});if(!claimed.count)return;active.add(id);try{await executeRun(id)}catch(e){console.error('Queue execution failed',id,e)}finally{active.delete(id)}}
+export async function tickQueue(){const room=Math.max(0,CONCURRENCY-active.size);if(!room)return;const queued=await prisma.workflowRun.findMany({where:{status:'QUEUED'},orderBy:{createdAt:'asc'},take:room,select:{id:true}});for(const r of queued)void launch(r.id)}
+export async function startQueue(){if(timer)return;await recoverInterrupted();startedAt=new Date();await tickQueue();timer=setInterval(()=>void tickQueue(),1000);timer.unref()}
+export function stopQueue(){if(timer){clearInterval(timer);timer=undefined}}
+export function queueStatus(){return{active:!!timer,startedAt:startedAt?.toISOString()||null,running:active.size,concurrency:CONCURRENCY}}
