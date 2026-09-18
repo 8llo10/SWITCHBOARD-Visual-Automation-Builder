@@ -1,14 +1,15 @@
-import Link from 'next/link';
-import {Activity,KeyRound,Network,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
-
-const items=[
- {href:'/workflows',label:'Workflows',icon:Workflow},
- {href:'/triggers',label:'Triggers',icon:Zap},
- {href:'/credentials',label:'Secrets',icon:KeyRound},
- {href:'/directory',label:'Directory',icon:Users},
- {href:'/audit',label:'Audit',icon:ScrollText},
- {href:'/users',label:'Users',icon:ShieldCheck},
- {href:'/settings',label:'System',icon:Settings},
-];
-
-export function EditorRail(){return <aside className="editor-rail"><Link href="/workflows" className="editor-rail-brand" title="SWITCHBOARD"><Network size={20}/></Link><nav>{items.map(({href,label,icon:Icon},i)=><Link key={href} href={href} className={i===0?'active':''} title={label}><Icon size={18}/><span>{label}</span></Link>)}</nav><div className="editor-rail-live" title="API connected"><Activity size={16}/><i/></div></aside>}
+'use client';
+import Link from'next/link';
+import{useEffect,useState}from'react';
+import{usePathname,useRouter}from'next/navigation';
+import{Activity,Archive,Copy,Download,KeyRound,MoreHorizontal,Network,Plus,ScrollText,Settings,ShieldCheck,Trash2,Users,Workflow,Zap}from'lucide-react';
+import{sb}from'../lib/switchboard';
+const items=[{href:'/triggers',label:'Triggers',icon:Zap},{href:'/credentials',label:'Secrets',icon:KeyRound},{href:'/directory',label:'Directory',icon:Users},{href:'/audit',label:'Audit',icon:ScrollText},{href:'/users',label:'Users',icon:ShieldCheck},{href:'/settings',label:'System',icon:Settings}];
+export function EditorRail(){const path=usePathname(),router=useRouter();const[open,setOpen]=useState(false),[rows,setRows]=useState<any[]>([]),[busy,setBusy]=useState('');const currentId=path.match(/^\/workflows\/([^/]+)/)?.[1];const load=()=>sb<any[]>('/workflows').then(setRows).catch(()=>{});useEffect(()=>{void load()},[]);
+ async function create(){const name=prompt('Workflow name');if(!name)return;setBusy('new');try{const slug=(name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||`workflow-${Date.now()}`);const w=await sb<any>('/workflows',{method:'POST',body:JSON.stringify({name,slug,status:'DRAFT',definition:{nodes:[{id:'start',type:'custom',position:{x:180,y:220},data:{label:'Manual Trigger',kind:'trigger',config:{}}}],edges:[]}})});router.push(`/workflows/${w.id}`);setOpen(false)}finally{setBusy('')}}
+ async function rename(w:any){const name=prompt('Rename workflow',w.name);if(!name||name===w.name)return;setBusy(w.id);try{await sb(`/workflows/${w.id}`,{method:'PUT',body:JSON.stringify({name})});await load()}finally{setBusy('')}}
+ async function duplicate(w:any){setBusy(w.id);try{const full=await sb<any>(`/workflows/${w.id}`);const name=`${w.name} copy`;const slug=`${w.slug}-copy-${Date.now().toString().slice(-5)}`;const copy=await sb<any>('/workflows',{method:'POST',body:JSON.stringify({name,slug,status:'DRAFT',description:full.description||undefined,definition:full.definition})});await load();router.push(`/workflows/${copy.id}`);setOpen(false)}finally{setBusy('')}}
+ async function archive(w:any){setBusy(w.id);try{await sb(`/workflows/${w.id}`,{method:'PUT',body:JSON.stringify({status:w.status==='ARCHIVED'?'DRAFT':'ARCHIVED'})});await load()}finally{setBusy('')}}
+ async function remove(w:any){if(!confirm(`Delete ${w.name}? This also deletes its runs and triggers.`))return;setBusy(w.id);try{await sb(`/workflows/${w.id}`,{method:'DELETE'});const left=rows.filter(x=>x.id!==w.id);if(w.id===currentId)router.push(left[0]?`/workflows/${left[0].id}`:'/workflows');await load()}finally{setBusy('')}}
+ async function exportWorkflow(w:any){const full=await sb<any>(`/workflows/${w.id}`);const blob=new Blob([JSON.stringify({name:full.name,description:full.description,status:'DRAFT',definition:full.definition},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`${w.slug}.switchboard.json`;a.click();URL.revokeObjectURL(url)}
+ return <><aside className="editor-rail"><button className="editor-rail-brand" title="SWITCHBOARD" onClick={()=>setOpen(v=>!v)}><Network size={20}/></button><nav><button className="active" title="Workflows" onClick={()=>setOpen(v=>!v)}><Workflow size={18}/><span>Workflows</span></button>{items.map(({href,label,icon:Icon})=><Link key={href} href={href} title={label}><Icon size={18}/><span>{label}</span></Link>)}</nav><div className="editor-rail-live" title="API connected"><Activity size={16}/><i/></div></aside>{open&&<div className="workflow-switcher"><header><div><small>WORKSPACE</small><b>Workflows</b></div><button onClick={create} disabled={!!busy}><Plus size={14}/>New</button></header><div className="workflow-switcher-list">{rows.map(w=><div className={`workflow-switcher-row ${w.id===currentId?'current':''}`} key={w.id}><button className="workflow-switcher-main" onClick={()=>{router.push(`/workflows/${w.id}`);setOpen(false)}}><span><b>{w.name}</b><small>{w.status} · v{w.version}</small></span></button><details><summary title="Actions"><MoreHorizontal size={15}/></summary><div className="workflow-actions-pop"><button onClick={()=>rename(w)}>Rename</button><button onClick={()=>duplicate(w)}><Copy size={12}/>Duplicate</button><button onClick={()=>exportWorkflow(w)}><Download size={12}/>Export</button><button onClick={()=>archive(w)}><Archive size={12}/>{w.status==='ARCHIVED'?'Restore':'Archive'}</button><button className="danger" onClick={()=>remove(w)}><Trash2 size={12}/>Delete</button></div></details></div>)}{!rows.length&&<div className="workflow-switcher-empty">No workflows yet.</div>}</div></div>}</>}
