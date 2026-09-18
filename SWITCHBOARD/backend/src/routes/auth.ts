@@ -5,5 +5,7 @@ import * as controller from '../controllers/auth.controller.js';
 const router=Router();
 router.post('/login',controller.login);
 router.post('/register',controller.register);
+router.post('/verify-email',controller.verifyEmail);
+router.post('/resend-verification',controller.resendVerification);
 router.get('/me',authenticate,controller.me);
 export default router;
