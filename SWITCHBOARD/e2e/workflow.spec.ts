@@ -1,0 +1,28 @@
+import {test,expect} from '@playwright/test';
+test('login, create, connect, save, run and read persisted output',async({page})=>{
+ await page.goto('/login');
+ await page.getByLabel('EMAIL',{exact:true}).fill(process.env.ADMIN_EMAIL!);
+ await page.getByLabel('PASSWORD',{exact:true}).fill(process.env.ADMIN_PASSWORD!);
+ await page.getByRole('button',{name:'ENTER CONTROL PLANE'}).click();
+ await page.getByPlaceholder('Workflow name').fill('Browser acceptance');
+ await page.getByRole('button',{name:'Create workflow'}).click();
+ await expect(page.locator('.n8n-title')).toContainText('Browser acceptance');
+ await page.getByTitle('Add next node').click();
+ await page.getByRole('button',{name:'Create User Directory',exact:true}).click();
+ await page.locator('.react-flow__node').filter({hasText:'Create User'}).click();
+ await page.getByLabel('Full name',{exact:true}).fill('{{trigger.fullName}}');
+ await page.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(page.locator('.n8n-title')).toContainText('Saved');
+ await page.getByRole('button',{name:'Execute',exact:true}).click();
+ await page.getByLabel('Input JSON').fill(JSON.stringify({email:'browser-acceptance@example.test',fullName:'Browser Acceptance',department:'IT'}));
+ await page.getByRole('button',{name:'Run workflow',exact:true}).click();
+ await expect(page.locator('.n8n-runbar')).toContainText('SUCCEEDED',{timeout:30000});
+ const workflowId=new URL(page.url()).pathname.split('/').at(-1);
+ const rows=await (await page.request.get(`/api/switchboard/runs?workflowId=${workflowId}`)).json();
+ expect(rows[0].status).toBe('SUCCEEDED');
+ const run=await(await page.request.get(`/api/switchboard/runs/${rows[0].id}`)).json();
+ expect(run.steps.find((s:{nodeType:string})=>s.nodeType==='createUser').output.fullName).toBe('Browser Acceptance');
+ const cookies=await page.context().cookies();
+ expect(cookies.find(c=>c.name==='switchboard_session')?.httpOnly).toBe(true);
+ expect(await page.evaluate(()=>localStorage.getItem('switchboard_token'))).toBeNull();
+});

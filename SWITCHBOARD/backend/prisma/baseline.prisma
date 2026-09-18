@@ -48,7 +48,6 @@ model User {
   emailVerifiedAt     DateTime?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
-  sessions            Session[]
   workflows           Workflow[]
   auditEvents         AuditEvent[]
   verificationTokens  EmailVerificationToken[]
@@ -107,8 +106,6 @@ model WorkflowRun {
   triggerType    String
   triggerPayload Json
   context        Json           @default("{}")
-  leaseOwner     String?
-  leaseUntil     DateTime?
   startedAt      DateTime?
   finishedAt     DateTime?
   error          String?
@@ -188,15 +185,4 @@ model AuditEvent {
 
   @@index([actorId, createdAt])
   @@index([entity, entityId])
-}
-
-model Session {
-  id        String   @id
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime @default(now())
-
-  @@index([userId, expiresAt])
 }

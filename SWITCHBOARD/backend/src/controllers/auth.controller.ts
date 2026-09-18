@@ -1,3 +1,4 @@
+import {audit} from '../services/audit.service.js';
 import type {Request,Response} from 'express';
 import {loginSchema,registerSchema,resendVerificationSchema,verifyEmailSchema} from '../validators/auth.validator.js';
 import * as authService from '../services/auth.service.js';
@@ -8,6 +9,7 @@ export async function login(req:Request,res:Response){
   const result=await authService.login(input.email,input.password);
   if(result.status==='INVALID')return res.status(401).json({error:'Invalid email or password'});
   if(result.status==='UNVERIFIED')return res.status(403).json({error:'Email verification required',code:'EMAIL_NOT_VERIFIED'});
+  req.user={id:result.user.id,email:result.user.email,name:result.user.name,role:result.user.role};await audit(req,'auth.login','User',result.user.id);
   const {status,...payload}=result;
   return res.json(payload);
 }

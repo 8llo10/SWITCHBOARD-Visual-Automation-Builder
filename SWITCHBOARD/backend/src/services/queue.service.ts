@@ -1,8 +1,39 @@
-import{prisma}from'../config/prisma.js';import{executeRun}from'../engine/engine.js';
-let timer:NodeJS.Timeout|undefined;let startedAt:Date|undefined;let lastRecovery=0;const active=new Set<string>();const CONCURRENCY=3;const STALE_MS=10*60*1000;
-async function recoverInterrupted(){const cutoff=new Date(Date.now()-STALE_MS);const runs=await prisma.workflowRun.findMany({where:{status:'RUNNING',OR:[{startedAt:null},{startedAt:{lt:cutoff}}]},select:{id:true}});if(!runs.length)return;const ids=runs.map(r=>r.id);await prisma.workflowStep.updateMany({where:{runId:{in:ids},status:'RUNNING'},data:{status:'FAILED',error:'Execution lease expired and was recovered',finishedAt:new Date()}});await prisma.workflowRun.updateMany({where:{id:{in:ids},status:'RUNNING'},data:{status:'QUEUED',error:null,finishedAt:null}})}
-async function launch(id:string){const claimed=await prisma.workflowRun.updateMany({where:{id,status:'QUEUED'},data:{status:'RUNNING',startedAt:new Date()}});if(!claimed.count)return;active.add(id);try{await executeRun(id)}catch(e){console.error('Queue execution failed',id,e)}finally{active.delete(id)}}
-export async function tickQueue(){if(Date.now()-lastRecovery>60000){lastRecovery=Date.now();await recoverInterrupted()}const room=Math.max(0,CONCURRENCY-active.size);if(!room)return;const queued=await prisma.workflowRun.findMany({where:{status:'QUEUED'},orderBy:{createdAt:'asc'},take:room,select:{id:true}});for(const r of queued)void launch(r.id)}
-export async function startQueue(){if(timer)return;lastRecovery=Date.now();await recoverInterrupted();startedAt=new Date();await tickQueue();timer=setInterval(()=>void tickQueue(),1000);timer.unref()}
-export function stopQueue(){if(timer){clearInterval(timer);timer=undefined}}
-export function queueStatus(){return{active:!!timer,startedAt:startedAt?.toISOString()||null,running:active.size,concurrency:CONCURRENCY,staleAfterMs:STALE_MS}}
+import { randomUUID } from 'node:crypto';
+import { prisma } from '../config/prisma.js';
+import { executeRun } from '../engine/engine.js';
+let timer: NodeJS.Timeout | undefined;
+let busy=false, startedAt:Date|undefined, lastError:string|null=null;
+const active=new Set<string>();
+const concurrency=Math.max(1,Math.min(16,Number(process.env.QUEUE_CONCURRENCY)||3));
+const leaseMs=60000;
+async function recoverInterrupted(){
+ // External effects cannot safely be replayed after an uncertain interruption.
+ // Mark failed; explicit retry uses the original immutable snapshot.
+ await prisma.$transaction(async tx=>{
+  const stale=await tx.$queryRaw<Array<{id:string}>>`UPDATE "WorkflowRun" SET status='FAILED', error='Worker interrupted. Review external effects before retrying.', "finishedAt"=NOW(), "leaseOwner"=NULL, "leaseUntil"=NULL WHERE status='RUNNING' AND ("leaseUntil" < NOW() OR "leaseUntil" IS NULL) RETURNING id`;
+  const ids=stale.map(r=>r.id);if(!ids.length)return;
+  await tx.workflowStep.updateMany({where:{runId:{in:ids},status:'RUNNING'},data:{status:'FAILED',error:'Worker lease expired; effect may have completed',finishedAt:new Date()}});
+ });
+}
+async function launch(id:string,owner:string){
+ const heartbeat=setInterval(()=>{void prisma.workflowRun.updateMany({where:{id,status:'RUNNING',leaseOwner:owner},data:{leaseUntil:new Date(Date.now()+leaseMs)}}).catch(()=>{lastError='Worker heartbeat failed'})},10000);
+ try{await executeRun(id,owner)}catch{lastError='Worker execution failed'}finally{clearInterval(heartbeat);active.delete(id)}
+}
+export async function tickQueue(){
+ if(busy)return;busy=true;
+ try{
+  await recoverInterrupted();
+  for(let room=concurrency-active.size;room>0;room--){
+   const owner=randomUUID();
+   const rows=await prisma.$queryRaw<Array<{id:string}>>`
+    UPDATE "WorkflowRun" SET status='RUNNING', "leaseOwner"=${owner}, "leaseUntil"=${new Date(Date.now()+leaseMs)}, "startedAt"=COALESCE("startedAt",NOW())
+    WHERE id=(SELECT id FROM "WorkflowRun" WHERE status='QUEUED' ORDER BY "createdAt" FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING id`;
+   if(!rows.length)break;
+   active.add(rows[0].id);void launch(rows[0].id,owner);
+  }
+  lastError=null;
+ }catch{lastError='Queue database operation failed'}finally{busy=false}
+}
+export async function startQueue(){if(timer)return;startedAt=new Date();await tickQueue();timer=setInterval(()=>void tickQueue(),1000);timer.unref()}
+export function stopQueue(){if(timer)clearInterval(timer);timer=undefined}
+export function queueStatus(){return{active:!!timer,startedAt:startedAt?.toISOString()||null,running:active.size,concurrency,leaseMs,lastError}}

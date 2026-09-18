@@ -1,5 +1,6 @@
+import {AppError} from '../utils/AppError.js';
 import{randomBytes}from'node:crypto';import{prisma}from'../config/prisma.js';
-export async function assertWorkflowAccess(workflowId:string,user:{id:string;role:string}){const w=await prisma.workflow.findUniqueOrThrow({where:{id:workflowId},select:{id:true,ownerId:true}});if(user.role!=='ADMIN'&&w.ownerId!==user.id)throw Object.assign(new Error('Forbidden'),{statusCode:403});return w}
+export async function assertWorkflowAccess(workflowId:string,user:{id:string;role:string}){const w=await prisma.workflow.findUniqueOrThrow({where:{id:workflowId},select:{id:true,ownerId:true}});if(user.role!=='ADMIN'&&w.ownerId!==user.id)throw new AppError('Forbidden',403);return w}
 export const list=(workflowId:string)=>prisma.trigger.findMany({where:{workflowId},select:{id:true,type:true,enabled:true,config:true,createdAt:true,updatedAt:true},orderBy:{createdAt:'asc'}});
 export const create=(workflowId:string,d:{type:string;enabled:boolean;config:Record<string,any>})=>prisma.trigger.create({data:{workflowId,type:d.type,enabled:d.enabled,config:d.config,secret:d.type==='WEBHOOK'?randomBytes(24).toString('hex'):null}});
 export const update=(id:string,d:{type?:string;enabled?:boolean;config?:Record<string,any>})=>prisma.trigger.update({where:{id},data:d});export const remove=(id:string)=>prisma.trigger.delete({where:{id}});export async function rotateSecret(id:string){return prisma.trigger.update({where:{id},data:{secret:randomBytes(24).toString('hex')}})}

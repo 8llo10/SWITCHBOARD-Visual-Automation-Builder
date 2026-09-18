@@ -4,8 +4,8 @@ import { signToken } from '../middleware/auth.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { issueVerification } from './email-verification.service.js';
 
-function session(user:{id:string;email:string;name:string;role:'ADMIN'|'OPERATOR'|'VIEWER';emailVerifiedAt:Date|null}){
-  return {token:signToken(user),user:{id:user.id,email:user.email,name:user.name,role:user.role,emailVerifiedAt:user.emailVerifiedAt}};
+async function session(user:{id:string;email:string;name:string;role:'ADMIN'|'OPERATOR'|'VIEWER';emailVerifiedAt:Date|null}){
+  return {token:await signToken(user),user:{id:user.id,email:user.email,name:user.name,role:user.role,emailVerifiedAt:user.emailVerifiedAt}};
 }
 
 export async function login(email:string,password:string){
@@ -16,9 +16,9 @@ export async function login(email:string,password:string){
   if(!isReservedAdmin&&!user.emailVerifiedAt)return {status:'UNVERIFIED' as const};
   if(isReservedAdmin&&!user.emailVerifiedAt){
     const verified=await prisma.user.update({where:{id:user.id},data:{emailVerifiedAt:new Date()}});
-    return {status:'OK' as const,...session(verified)};
+    return {status:'OK' as const,...await session(verified)};
   }
-  return {status:'OK' as const,...session(user)};
+  return {status:'OK' as const,...await session(user)};
 }
 
 export async function register(name:string,email:string,password:string){

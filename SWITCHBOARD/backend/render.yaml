@@ -12,8 +12,8 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: ADMIN_EMAIL
-        value: admin@switchboard.local
+        sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: CREDENTIAL_ENCRYPTION_KEY
-        generateValue: true
+        sync: false

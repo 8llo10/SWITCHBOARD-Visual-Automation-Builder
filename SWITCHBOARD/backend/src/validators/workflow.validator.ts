@@ -1,6 +1,6 @@
 import{z}from'zod';
 
-const supportedKinds=new Set(['trigger','createUser','disableUser','addGroup','assignLicense','condition','email','http','postgres','webhook','ssh','powershell','health','delay','approval','noop']);
+const supportedKinds=new Set(['trigger','createUser','disableUser','addGroup','assignLicense','removeGroup','revokeLicense','schedule','condition','email','http','postgres','webhook','ssh','powershell','health','delay','approval','noop']);
 const nodeSchema=z.object({
  id:z.string().min(1),
  type:z.string().min(1),
@@ -24,12 +24,22 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   if(!supportedKinds.has(kind))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','kind'],message:`Unsupported node kind: ${kind||'(missing)'}`});
   if(!String(node.data?.label||'').trim())ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','label'],message:'Node label is required'});
   const c=node.data?.config||{};
+  const issue=(field:string,message:string)=>ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config',field],message});
+  if(kind==='condition'){
+   if(!c.field)issue('field','Condition field is required');
+   if(!['equals','notEquals','contains','exists','truthy','gt','gte','lt','lte'].includes(c.operator||'equals'))issue('operator','Unsupported condition operator');
+  }
+  if(['addGroup','removeGroup'].includes(kind)&&!c.group)issue('group','Group is required');
+  if(['assignLicense','revokeLicense'].includes(kind)&&!c.license)issue('license','License is required');
+  if(kind==='schedule'&&(!Number.isFinite(Number(c.every))||Number(c.every)<=0))issue('every','Positive schedule interval required');
+  if(c.timeoutMs!==undefined&&(!Number.isFinite(Number(c.timeoutMs))||Number(c.timeoutMs)<1||Number(c.timeoutMs)>120000))issue('timeoutMs','Timeout must be between 1 and 120000 ms');
+  if(kind==='delay'&&(!Number.isFinite(Number(c.ms??1000))||Number(c.ms??1000)<0||Number(c.ms??1000)>30000))issue('ms','Delay must be between 0 and 30000 ms');
   if(kind==='health'&&!c.url)ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config','url'],message:'Health Check requires a URL'});
   if(kind==='http'&&!c.url)ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config','url'],message:'HTTP Request requires a URL'});
   if(kind==='postgres'&&(!c.connectionString&&!c.credentialRef||!c.query))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:'PostgreSQL requires a connection/credential and query'});
   if((kind==='ssh'||kind==='powershell')&&((!c.host||!c.username)&&!c.credentialRef||!c.command))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:`${kind} requires connection details/credential and command`});
  }
- if(!def.nodes.some(n=>['trigger','webhook'].includes(String(n.data?.kind))))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes'],message:'Workflow requires at least one trigger node'});
+ if(!def.nodes.some(n=>['trigger','webhook','schedule'].includes(String(n.data?.kind))))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes'],message:'Workflow requires at least one trigger node'});
  const edgeIds=new Set<string>();
  for(const[i,e]of def.edges.entries()){
   if(edgeIds.has(e.id))ctx.addIssue({code:z.ZodIssueCode.custom,path:['edges',i,'id'],message:`Duplicate edge id: ${e.id}`});
