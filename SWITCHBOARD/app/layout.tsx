@@ -2,6 +2,7 @@ import './globals.css';
 import './neo.css';
 import './control.css';
 import './automation.css';
+import './product-pages.css';
 import './editor-extra.css';
 import './credentials-extra.css';
 import './run-detail.css';
