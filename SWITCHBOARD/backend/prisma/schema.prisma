@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -46,8 +46,8 @@ model User {
   role                Role                @default(OPERATOR)
   active              Boolean             @default(true)
   emailVerifiedAt     DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
   workflows           Workflow[]
   auditEvents         AuditEvent[]
   verificationTokens  EmailVerificationToken[]
