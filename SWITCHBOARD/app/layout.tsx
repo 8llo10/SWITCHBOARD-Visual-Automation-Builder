@@ -2,6 +2,7 @@ import './globals.css';
 import './neo.css';
 import './control.css';
 import './automation.css';
+import './editor-extra.css';
 import './landing-neo.css';
 import './auth-neo.css';
 export const metadata={
