@@ -1,0 +1,4 @@
+import type{Request,Response,NextFunction}from'express';
+type Bucket={count:number;resetAt:number};
+const stores=new Map<string,Map<string,Bucket>>();
+export function rateLimit(name:string,limit:number,windowMs:number){let store=stores.get(name);if(!store){store=new Map();stores.set(name,store)}return(req:Request,res:Response,next:NextFunction)=>{const now=Date.now();const key=req.ip||req.socket.remoteAddress||'unknown';let bucket=store!.get(key);if(!bucket||bucket.resetAt<=now){bucket={count:0,resetAt:now+windowMs};store!.set(key,bucket)}bucket.count++;res.setHeader('X-RateLimit-Limit',String(limit));res.setHeader('X-RateLimit-Remaining',String(Math.max(0,limit-bucket.count)));res.setHeader('X-RateLimit-Reset',String(Math.ceil(bucket.resetAt/1000)));if(bucket.count>limit)return res.status(429).json({error:'Too many requests. Try again later.'});if(store!.size>5000){for(const[k,v]of store!){if(v.resetAt<=now)store!.delete(k)}}next()}}
