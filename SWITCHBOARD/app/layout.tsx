@@ -1,4 +1,5 @@
 import './globals.css';
+import './neo.css';
 export const metadata={
   title:{default:'SWITCHBOARD — Visual IT Automation',template:'%s · SWITCHBOARD'},
   description:'Build, execute and govern real IT automation workflows visually.',
