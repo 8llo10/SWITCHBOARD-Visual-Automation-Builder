@@ -12,6 +12,7 @@ function transporter(){
     host:env.SMTP_HOST,
     port:env.SMTP_PORT,
     secure:env.SMTP_PORT===465,
+    connectionTimeout:15000,socketTimeout:15000,
     auth:{user:env.SMTP_USER,pass:env.SMTP_PASS},
   });
 }
@@ -39,13 +40,14 @@ export async function issueVerification(user:{id:string;email:string;name:string
   }
 
   const verifyUrl=`${frontendBase()}/verify-email?token=${encodeURIComponent(token)}`;
-  await mailer.sendMail({
+  const safeName=user.name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+  try{await mailer.sendMail({
     from:env.SMTP_FROM,
     to:user.email,
     subject:'Verify your SWITCHBOARD account',
     text:`Hi ${user.name},\n\nVerify your SWITCHBOARD account using this link:\n${verifyUrl}\n\nThis link expires in ${env.EMAIL_VERIFY_TTL_MINUTES} minutes.`,
-    html:`<p>Hi ${user.name},</p><p>Verify your SWITCHBOARD account:</p><p><a href="${verifyUrl}">Verify email</a></p><p>This link expires in ${env.EMAIL_VERIFY_TTL_MINUTES} minutes.</p>`,
-  });
+    html:`<p>Hi ${safeName},</p><p>Verify your SWITCHBOARD account:</p><p><a href="${verifyUrl}">Verify email</a></p><p>This link expires in ${env.EMAIL_VERIFY_TTL_MINUTES} minutes.</p>`,
+  })}catch{return {sent:false,cooldownSeconds:0,reason:'SMTP_DELIVERY_FAILED'} as const}
   return {sent:true,cooldownSeconds:0};
 }
 
@@ -59,6 +61,8 @@ export async function verifyEmail(rawToken:string){
 
   const now=new Date();
   const user=await prisma.$transaction(async tx=>{
+    const claimed=await tx.emailVerificationToken.updateMany({where:{id:record.id,usedAt:null,expiresAt:{gt:now}},data:{usedAt:now}});
+    if(!claimed.count)return null;
     const updated=await tx.user.update({where:{id:record.userId},data:{emailVerifiedAt:now}});
     await tx.emailVerificationToken.update({where:{id:record.id},data:{usedAt:now}});
     await tx.emailVerificationToken.deleteMany({where:{userId:record.userId,id:{not:record.id},usedAt:null}});

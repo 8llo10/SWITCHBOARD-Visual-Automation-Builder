@@ -6,7 +6,7 @@ export async function ensureAuthSchema(){
   const adminPasswordHash=await hashPassword(env.ADMIN_PASSWORD);
   await prisma.user.upsert({
     where:{email:env.ADMIN_EMAIL.toLowerCase()},
-    update:{name:env.ADMIN_NAME,active:true,role:'ADMIN',passwordHash:adminPasswordHash,emailVerifiedAt:new Date()},
+    update:{},
     create:{email:env.ADMIN_EMAIL.toLowerCase(),name:env.ADMIN_NAME,role:'ADMIN',active:true,passwordHash:adminPasswordHash,emailVerifiedAt:new Date()},
   });
 }

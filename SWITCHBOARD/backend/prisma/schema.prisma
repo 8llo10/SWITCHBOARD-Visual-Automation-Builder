@@ -48,6 +48,7 @@ model User {
   emailVerifiedAt     DateTime?
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
+  sessions            Session[]
   workflows           Workflow[]
   auditEvents         AuditEvent[]
   verificationTokens  EmailVerificationToken[]
@@ -74,6 +75,7 @@ model Workflow {
   status      WorkflowStatus @default(DRAFT)
   definition  Json
   version     Int            @default(1)
+  permittedUserIds String[] @default([])
   ownerId     String?
   owner       User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt   DateTime       @default(now())
@@ -106,6 +108,8 @@ model WorkflowRun {
   triggerType    String
   triggerPayload Json
   context        Json           @default("{}")
+  leaseOwner     String?
+  leaseUntil     DateTime?
   startedAt      DateTime?
   finishedAt     DateTime?
   error          String?
@@ -167,6 +171,7 @@ model Credential {
   id            String   @id @default(cuid())
   name          String   @unique
   type          String
+  allowedWorkflowIds String[] @default([])
   encryptedData String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -185,4 +190,15 @@ model AuditEvent {
 
   @@index([actorId, createdAt])
   @@index([entity, entityId])
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, expiresAt])
 }

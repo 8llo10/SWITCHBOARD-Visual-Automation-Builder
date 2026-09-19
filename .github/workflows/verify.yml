@@ -1,0 +1,58 @@
+name: Verify SWITCHBOARD
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: switchboard
+          POSTGRES_PASSWORD: integration-only
+          POSTGRES_DB: switchboard_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U switchboard -d switchboard_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://switchboard:integration-only@localhost:5432/switchboard_test
+      DIRECT_URL: postgresql://switchboard:integration-only@localhost:5432/switchboard_test
+      JWT_SECRET: integration-only-key-at-least-32-characters
+      CREDENTIAL_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      INTEGRATION_TESTS: '1'
+      ADMIN_EMAIL: e2e-admin@example.test
+      ADMIN_PASSWORD: E2e-password-only-123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            SWITCHBOARD/package-lock.json
+            SWITCHBOARD/backend/package-lock.json
+      - run: npm ci
+        working-directory: SWITCHBOARD
+      - run: npm ci
+        working-directory: SWITCHBOARD/backend
+      - run: npm audit --omit=dev --audit-level=moderate
+        working-directory: SWITCHBOARD
+      - run: npm audit --omit=dev --audit-level=moderate
+        working-directory: SWITCHBOARD/backend
+      - run: npx prisma validate && npx prisma generate && npx prisma migrate deploy
+        working-directory: SWITCHBOARD/backend
+      - run: npm run build && npm test && npx tsc -p tsconfig.test.json && npm run test:integration
+        working-directory: SWITCHBOARD/backend
+      - run: npm run build
+        working-directory: SWITCHBOARD
+      - run: npx playwright install --with-deps chromium
+        working-directory: SWITCHBOARD
+      - run: npx playwright test
+        working-directory: SWITCHBOARD
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-traces
+          path: SWITCHBOARD/test-results

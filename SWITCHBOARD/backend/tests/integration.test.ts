@@ -1,0 +1,189 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {once} from 'node:events';
+import {createServer as createSmtpServer,type Socket} from 'node:net';
+import {createHash} from 'node:crypto';
+const url=new URL(process.env.DATABASE_URL||'postgresql://localhost/missing');
+if(process.env.INTEGRATION_TESTS!=='1'||!['localhost','127.0.0.1'].includes(url.hostname)||!url.pathname.endsWith('_test'))throw new Error('Integration tests require an explicitly enabled local *_test database');
+const {prisma}=await import('../src/config/prisma.js');
+const {app}=await import('../src/app.js');
+const {tickQueue,stopQueue}=await import('../src/services/queue.service.js');
+const {hashPassword}=await import('../src/utils/password.js');
+const {workflowTemplates}=await import('../../lib/templates.ts');
+const {workflowDefinitionSchema}=await import('../src/validators/workflow.validator.js');
+const {encryptJson}=await import('../src/utils/crypto.js');
+const suffix=crypto.randomUUID(),email=`operator-${suffix}@example.test`;
+const server=app.listen(0,'127.0.0.1');await once(server,'listening');
+const address=server.address();assert(address&&typeof address==='object');
+const base=`http://127.0.0.1:${address.port}/api`;
+let token='',workflowId='';
+async function request(path:string,method='GET',body?:unknown,bearer=token){const response=await fetch(base+path,{method,headers:{'content-type':'application/json',...(bearer?{authorization:`Bearer ${bearer}`}:{})},body:body===undefined?undefined:JSON.stringify(body)});return{status:response.status,data:await response.json().catch(()=>null)}}
+const definition={nodes:[{id:'start',type:'custom',position:{x:0,y:0},data:{kind:'trigger',label:'Start',config:{}}},{id:'create',type:'custom',position:{x:300,y:0},data:{kind:'createUser',label:'Create user',config:{email:'{{trigger.email}}',fullName:'{{trigger.fullName}}'}}}],edges:[{id:'a',source:'start',target:'create'}]};
+async function waitFor(id:string,status:string){for(let i=0;i<100;i++){await tickQueue();const run=await prisma.workflowRun.findUniqueOrThrow({where:{id}});if(run.status===status)return run;if(run.status==='FAILED'&&status!=='FAILED')throw new Error(run.error||'Run failed');await new Promise(r=>setTimeout(r,30))}throw new Error(`Run did not reach ${status}`)}
+test('API, RBAC, queue, directory, approvals, cancellation and session revocation',async t=>{
+ try{
+  await t.test('all product templates are valid graphs',()=>{for(const template of workflowTemplates)assert.equal(workflowDefinitionSchema.safeParse(template.definition).success,true,template.name)});
+  await t.test('signup requires verification and login issues a session',async()=>{const registered=await request('/auth/register','POST',{name:'Integration Operator',email,password:'Test-password-123!'},'');assert.equal(registered.status,201);assert.equal(registered.data.verificationRequired,true);assert.equal((await request('/auth/login','POST',{email,password:'Test-password-123!'},'')).status,403);const verificationToken=crypto.randomUUID();const verification=await prisma.emailVerificationToken.findFirstOrThrow({where:{user:{email}}});await prisma.emailVerificationToken.update({where:{id:verification.id},data:{tokenHash:createHash('sha256').update(verificationToken).digest('hex')}});assert.equal((await request('/auth/verify-email','POST',{token:verificationToken},'')).status,200);assert.equal((await request('/auth/verify-email','POST',{token:verificationToken},'')).status,400);const login=await request('/auth/login','POST',{email,password:'Test-password-123!'},'');assert.equal(login.status,200);token=login.data.token;assert.equal(token.split('.').length,3)});
+  await t.test('operator cannot manage users or credentials',async()=>{assert.equal((await request('/users')).status,403);assert.equal((await request('/credentials','POST',{name:'forbidden',type:'API_KEY',data:{secret:'secret'}})).status,403)});
+  await t.test('workflow CRUD rejects invalid graphs',async()=>{const w=await request('/workflows','POST',{name:'Integration',slug:`integration-${suffix}`,definition});assert.equal(w.status,201);workflowId=w.data.id;assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:{nodes:definition.nodes,edges:[{id:'bad',source:'missing',target:'create'}]}})).status,400);assert.equal((await request(`/workflows/${workflowId}`,'PUT',{name:'Renamed'})).data.name,'Renamed')});
+  await t.test('credential permission prevents operator use until explicitly granted',async()=>{
+   const credential=await prisma.credential.create({data:{name:`secret-${suffix}`,type:'API_KEY',encryptedData:encryptJson({secret:'integration-secret'}),allowedWorkflowIds:[]}});
+   try{
+    const withCredential={...definition,nodes:[definition.nodes[0],{id:'http',type:'custom',position:{x:300,y:0},data:{kind:'http',label:'HTTP',config:{url:'https://example.test',credentialRef:credential.id}}}],edges:[{id:'edge',source:'start',target:'http'}]};
+    assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:withCredential})).status,400);
+    await prisma.credential.update({where:{id:credential.id},data:{allowedWorkflowIds:[workflowId]}});
+    assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:withCredential})).status,200);
+    const listed=await request('/credentials');assert.equal(listed.data.find((c:any)=>c.id===credential.id).encryptedData,undefined);
+    await request(`/workflows/${workflowId}`,'PUT',{definition});
+   }finally{await prisma.credential.delete({where:{id:credential.id}})}
+  });
+  await t.test('administrator can create, rotate and delete encrypted credentials',async()=>{
+   await prisma.user.update({where:{email},data:{role:'ADMIN'}});let id='';
+   try{
+    const created=await request('/credentials','POST',{name:'Integration API key',type:'API_KEY',data:{secret:'first-test-secret'},allowedWorkflowIds:[]});assert.equal(created.status,201);id=created.data.id;
+    assert.equal(created.data.encryptedData,undefined);assert.equal(created.data.secret,undefined);
+    const stored=await prisma.credential.findUniqueOrThrow({where:{id}});assert(!stored.encryptedData.includes('first-test-secret'));
+    assert.equal((await request(`/credentials/${id}`,'PUT',{name:'Rotated API key',type:'API_KEY',data:{secret:'second-test-secret'},allowedWorkflowIds:[]})).status,200);
+    assert.notEqual((await prisma.credential.findUniqueOrThrow({where:{id}})).encryptedData,stored.encryptedData);
+    assert.equal((await request(`/credentials/${id}`,'DELETE')).status,204);id='';
+   }finally{if(id)await prisma.credential.delete({where:{id}});await prisma.user.update({where:{email},data:{role:'OPERATOR'}})}
+  });
+  await t.test('real queued execution persists output and directory state',async()=>{const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Integration Person'}});assert.equal(r.status,202);assert.equal(r.data.status,'QUEUED');await waitFor(r.data.id,'SUCCEEDED');const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});assert.equal(steps.length,2);assert.equal(steps[1].status,'SUCCEEDED');assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Integration Person')});
+  await t.test('directory group, license and disable nodes mutate persisted state',async()=>{
+   const actions=[['groupAdd','addGroup',{email,group:'Operations'}],['licenseAdd','assignLicense',{email,license:'Office'}],['groupRemove','removeGroup',{email,group:'Operations'}],['licenseRemove','revokeLicense',{email,license:'Office'}],['disable','disableUser',{email}]] as const;
+   const nodes=[definition.nodes[0],...actions.map(([id,kind,config])=>({id,type:'custom',position:{x:200,y:0},data:{kind,label:id,config}}))];const edges=nodes.slice(1).map((node,index)=>({id:`edge-${index}`,source:nodes[index].id,target:node.id}));
+   await request(`/workflows/${workflowId}`,'PUT',{definition:{nodes,edges}});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'SUCCEEDED');
+   const user=await prisma.directoryUser.findUniqueOrThrow({where:{email}});assert.equal(user.active,false);assert(!user.groups.includes('Operations'));assert(!user.licenses.includes('Office'));
+   const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});assert((steps.find(s=>s.nodeId==='groupAdd')?.output as any).groups.includes('Operations'));assert((steps.find(s=>s.nodeId==='licenseAdd')?.output as any).licenses.includes('Office'));
+  });
+  await t.test('email node sends through an authenticated SMTP connection',async()=>{
+   const received:string[]=[],sockets=new Set<Socket>();
+   const smtp=createSmtpServer(socket=>{
+    sockets.add(socket);socket.on('close',()=>sockets.delete(socket));socket.setEncoding('utf8');socket.write('220 localhost test SMTP\r\n');
+    let buffer='',message='',dataMode=false;
+    socket.on('data',chunk=>{buffer+=String(chunk);let end:number;while((end=buffer.indexOf('\r\n'))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+2);
+     if(dataMode){if(line==='.'){received.push(message);message='';dataMode=false;socket.write('250 Message accepted\r\n')}else message+=line+'\n';continue}
+     if(/^EHLO/i.test(line))socket.write('250-localhost\r\n250 AUTH PLAIN\r\n');
+     else if(/^AUTH/i.test(line))socket.write('235 Authentication successful\r\n');
+     else if(/^DATA/i.test(line)){dataMode=true;socket.write('354 End with a dot\r\n')}
+     else if(/^QUIT/i.test(line))socket.end('221 Goodbye\r\n');
+     else socket.write('250 OK\r\n');
+    }});
+   });smtp.listen(0,'127.0.0.1');await once(smtp,'listening');const address=smtp.address();assert(address&&typeof address==='object');
+   const credential=await prisma.credential.create({data:{name:'Local SMTP integration',type:'SMTP',allowedWorkflowIds:[workflowId],encryptedData:encryptJson({host:'127.0.0.1',port:address.port,username:'test',password:'test-only-password'})}});
+   try{
+    const graph={nodes:[definition.nodes[0],{id:'mail',type:'custom',position:{x:200,y:0},data:{kind:'email',label:'Send real SMTP message',config:{credentialRef:credential.id,to:'recipient@example.test',subject:'Integration mail',text:'Hello from queue'}}}],edges:[{id:'a',source:'start',target:'mail'}]};
+    assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:graph})).status,200);const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'SUCCEEDED');
+    assert.equal(received.length,1);assert.match(received[0],/Subject: Integration mail/);assert.match(received[0],/Hello from queue/);
+   }finally{for(const socket of sockets)socket.destroy();await new Promise<void>(resolve=>smtp.close(()=>resolve()));await prisma.credential.delete({where:{id:credential.id}})}
+  });
+  await t.test('parallel branches join only after both predecessors finish',async()=>{
+   const branch=(id:string,ms:number)=>({id,type:'custom',position:{x:200,y:0},data:{kind:'delay',label:id,config:{ms}}});
+   const graph={nodes:[definition.nodes[0],branch('fast',10),branch('slow',150),definition.nodes[1]],edges:[{id:'a',source:'start',target:'fast'},{id:'b',source:'start',target:'slow'},{id:'c',source:'fast',target:'create'},{id:'d',source:'slow',target:'create'}]};
+   assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:graph})).status,200);
+   const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Joined Person'}});await waitFor(r.data.id,'SUCCEEDED');
+   const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});const join=steps.find(s=>s.nodeId==='create')!;
+   for(const id of ['fast','slow'])assert(join.startedAt!.getTime()>=steps.find(s=>s.nodeId===id)!.finishedAt!.getTime());
+   assert.equal(steps.filter(s=>s.nodeId==='create').length,1);
+  });
+  await t.test('condition skips the unselected path and resolves its join',async()=>{
+   const graph={nodes:[definition.nodes[0],{id:'condition',type:'custom',position:{x:100,y:0},data:{kind:'condition',label:'Condition',config:{field:'trigger.ok',operator:'equals',value:true}}},{id:'yes',type:'custom',position:{x:200,y:0},data:{kind:'noop',label:'Yes',config:{}}},{id:'no',type:'custom',position:{x:200,y:100},data:{kind:'noop',label:'No',config:{}}},definition.nodes[1]],edges:[{id:'a',source:'start',target:'condition'},{id:'b',source:'condition',target:'yes',data:{when:true}},{id:'c',source:'condition',target:'no',data:{when:false}},{id:'d',source:'yes',target:'create'},{id:'e',source:'no',target:'create'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Conditional Person',ok:true}});await waitFor(r.data.id,'SUCCEEDED');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:r.data.id,nodeId:'no'}})).status,'SKIPPED');
+  });
+  await t.test('webhook secrets authenticate and enqueue real work',async()=>{
+   const graph={nodes:[{...definition.nodes[0],data:{kind:'webhook',label:'Webhook',config:{}}},definition.nodes[1]],edges:definition.edges};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph,status:'ACTIVE'});
+   const trigger=await request(`/triggers/workflow/${workflowId}`,'POST',{type:'WEBHOOK',enabled:true,config:{nodeId:'start'}});assert.equal(trigger.status,201);
+   assert.equal((await fetch(`${base}/webhooks/integration-${suffix}`,{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status,401);
+   const res=await fetch(`${base}/webhooks/integration-${suffix}`,{method:'POST',headers:{'content-type':'application/json','x-switchboard-secret':trigger.data.secret},body:JSON.stringify({email,fullName:'Webhook Person'})});assert.equal(res.status,202);const r=await res.json();await waitFor(r.runId,'SUCCEEDED');
+   await request(`/triggers/${trigger.data.id}`,'DELETE');
+  });
+  await t.test('scheduler creates a single queued run per interval',async()=>{
+   const {tick}=await import('../src/services/scheduler.service.js');
+   const graph={nodes:[{...definition.nodes[0],data:{kind:'schedule',label:'Schedule',config:{every:5,unit:'minutes'}}}],edges:[]};await request(`/workflows/${workflowId}`,'PUT',{definition:graph,status:'ACTIVE'});
+   const trigger=await request(`/triggers/workflow/${workflowId}`,'POST',{type:'SCHEDULE',enabled:true,config:{nodeId:'start',every:5,unit:'minutes'}});assert.equal(trigger.status,201);
+   await Promise.all([tick(),tick()]);await tick();
+   const runs=await prisma.workflowRun.findMany({where:{workflowId,triggerType:`schedule:${trigger.data.id}`}});assert.equal(runs.length,1);assert.equal(runs[0].status,'QUEUED');await waitFor(runs[0].id,'SUCCEEDED');
+   await request(`/triggers/${trigger.data.id}`,'DELETE');
+  });
+  await t.test('approval pauses and resumes through queue',async()=>{const approval={...definition,nodes:[definition.nodes[0],{id:'approval',type:'custom',position:{x:200,y:0},data:{kind:'approval',label:'Approve',config:{}}},definition.nodes[1]],edges:[{id:'a',source:'start',target:'approval'},{id:'b',source:'approval',target:'create'}]};assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:approval})).status,200);const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Approved Person'}});await waitFor(r.data.id,'WAITING');assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).data.status,'QUEUED');await waitFor(r.data.id,'SUCCEEDED');assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Approved Person')});
+  await t.test('one approved branch resumes while another approval remains waiting',async()=>{
+   const approval=(id:string,approverEmail:string)=>({id,type:'custom',position:{x:200,y:0},data:{kind:'approval',label:id,config:{approverEmail}}});
+   const graph={nodes:[definition.nodes[0],approval('own',email),approval('other','other@example.test'),{id:'afterOwn',type:'custom',position:{x:400,y:0},data:{kind:'noop',label:'Approved branch continuation',config:{}}}],edges:[{id:'a',source:'start',target:'own'},{id:'b',source:'start',target:'other'},{id:'c',source:'own',target:'afterOwn'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'WAITING');
+   assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).data.status,'QUEUED');await waitFor(r.data.id,'WAITING');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:r.data.id,nodeId:'afterOwn'}})).status,'SUCCEEDED');
+   assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).status,409);
+   await prisma.user.update({where:{email},data:{role:'ADMIN'}});
+   try{await request(`/runs/${r.data.id}/approve`,'POST',{});await waitFor(r.data.id,'SUCCEEDED')}finally{await prisma.user.update({where:{email},data:{role:'OPERATOR'}})}
+  });
+  await t.test('cancelled queued run cannot be claimed',async()=>{const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Never'}});assert.equal((await request(`/runs/${r.data.id}/cancel`,'POST',{})).status,200);await tickQueue();assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:r.data.id}})).status,'CANCELLED')});
+  await t.test('cancellation while a node is running remains terminal',async()=>{
+   const graph={nodes:[definition.nodes[0],{id:'slow',type:'custom',position:{x:200,y:0},data:{kind:'delay',label:'Slow step',config:{ms:350}}}],edges:[{id:'a',source:'start',target:'slow'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});
+   const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'RUNNING');
+   for(let i=0;i<30;i++){if(await prisma.workflowStep.count({where:{runId:r.data.id,nodeId:'slow',status:'RUNNING'}}))break;await new Promise(resolve=>setTimeout(resolve,10))}
+   assert.equal((await request(`/runs/${r.data.id}/cancel`,'POST',{})).status,200);
+   await new Promise(resolve=>setTimeout(resolve,450));
+   assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:r.data.id}})).status,'CANCELLED');
+   assert.equal(await prisma.workflowStep.count({where:{runId:r.data.id,status:'RUNNING'}}),0);
+  });
+  await t.test('retries preserve the original definition and version',async()=>{
+   const graph={nodes:[definition.nodes[0],{id:'request',type:'custom',position:{x:200,y:0},data:{kind:'http',label:'Failing HTTP',retry:1,config:{url:base.replace('/api','')+'/health/missing',expectedStatus:200}}}],edges:[{id:'a',source:'start',target:'request'}]};
+   const saved=await request(`/workflows/${workflowId}`,'PUT',{definition:graph});
+   const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'FAILED');
+   assert.equal(await prisma.workflowStep.count({where:{runId:r.data.id,nodeId:'request'}}),2);
+   await request(`/workflows/${workflowId}`,'PUT',{definition:{nodes:[definition.nodes[0]],edges:[]}});
+   const retry=await request(`/runs/${r.data.id}/retry`,'POST',{});assert.equal(retry.status,202);
+   const retried=await waitFor(retry.data.runId,'FAILED');
+   assert.equal((retried.context as any).workflowVersion,saved.data.version);
+   assert.equal((retried.context as any).definitionSnapshot.nodes[1].id,'request');
+  });
+  await t.test('continue on failure executes downstream nodes',async()=>{
+   const graph={nodes:[definition.nodes[0],{id:'request',type:'custom',position:{x:200,y:0},data:{kind:'http',label:'Optional HTTP',continueOnFailure:true,config:{url:base.replace('/api','')+'/health/missing'}}},definition.nodes[1]],edges:[{id:'a',source:'start',target:'request'},{id:'b',source:'request',target:'create'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Continued Person'}});await waitFor(r.data.id,'SUCCEEDED');
+   assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Continued Person');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:r.data.id,nodeId:'request'}})).status,'FAILED');
+  });
+  await t.test('expired approval fails without resuming downstream work',async()=>{
+   const graph={nodes:[definition.nodes[0],{id:'approval',type:'custom',position:{x:200,y:0},data:{kind:'approval',label:'Timed approval',config:{timeoutMinutes:1}}}],edges:[{id:'a',source:'start',target:'approval'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'WAITING');
+   const step=await prisma.workflowStep.findFirstOrThrow({where:{runId:r.data.id,nodeId:'approval'}});
+   await prisma.workflowStep.update({where:{id:step.id},data:{output:{deadline:new Date(Date.now()-1000).toISOString()}}});await tickQueue();
+   assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:r.data.id}})).status,'FAILED');
+   assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).status,409);
+  });
+  await t.test('stale worker leases fail safely without replaying effects',async()=>{
+   const run=await prisma.workflowRun.create({data:{workflowId,status:'RUNNING',triggerType:'manual',triggerPayload:{},leaseOwner:'interrupted-worker',leaseUntil:new Date(Date.now()-1000)}});
+   await prisma.workflowStep.create({data:{runId:run.id,nodeId:'external',nodeType:'http',label:'Uncertain external request',status:'RUNNING'}});await tickQueue();
+   assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:run.id}})).status,'FAILED');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:run.id}})).status,'FAILED');
+  });
+  await t.test('trigger registration requires a matching node and deletion disables it',async()=>{
+   assert.equal((await request(`/triggers/workflow/${workflowId}`,'POST',{type:'WEBHOOK',config:{nodeId:'missing'}})).status,400);
+   const graph={nodes:[{...definition.nodes[0],data:{kind:'webhook',label:'Webhook',config:{}}}],edges:[]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});
+   const trigger=await request(`/triggers/workflow/${workflowId}`,'POST',{type:'WEBHOOK',config:{nodeId:'start'}});assert.equal(trigger.status,201);
+   const manual=await request(`/workflows/${workflowId}/run`,'POST',{payload:{hello:'test'}});await waitFor(manual.data.id,'SUCCEEDED');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:manual.data.id,nodeId:'start'}})).status,'SUCCEEDED');
+   await request(`/workflows/${workflowId}`,'PUT',{definition:{nodes:[definition.nodes[0]],edges:[]}});
+   assert.equal((await prisma.trigger.findUniqueOrThrow({where:{id:trigger.data.id}})).enabled,false);
+   await request(`/triggers/${trigger.data.id}`,'DELETE');
+  });
+  await t.test('refresh rotates the session and disabled accounts are enforced',async()=>{
+   const previous=token;const refreshed=await request('/auth/refresh','POST',{});assert.equal(refreshed.status,200);token=refreshed.data.token;
+   assert.equal((await request('/auth/me','GET',undefined,previous)).status,401);
+   await prisma.user.update({where:{email},data:{active:false}});assert.equal((await request('/auth/me')).status,401);
+   await prisma.user.update({where:{email},data:{active:true}});
+  });
+  await t.test('another account cannot read the workflow',async()=>{const other=await prisma.user.create({data:{email:`viewer-${suffix}@example.test`,name:'Viewer',role:'VIEWER',emailVerifiedAt:new Date(),passwordHash:await hashPassword('Test-password-123!')}});const login=await request('/auth/login','POST',{email:other.email,password:'Test-password-123!'},'');assert.equal((await request(`/workflows/${workflowId}`,'GET',undefined,login.data.token)).status,403);await prisma.workflow.update({where:{id:workflowId},data:{permittedUserIds:[other.id]}});assert.equal((await request(`/workflows/${workflowId}`,'GET',undefined,login.data.token)).status,200);assert.equal((await request(`/workflows/${workflowId}/run`,'POST',{payload:{}},login.data.token)).status,403);assert.equal((await request(`/workflows/${workflowId}`,'PUT',{name:'Denied'},login.data.token)).status,403);assert.equal((await request('/workflows','POST',{name:'No',slug:'no',definition},login.data.token)).status,403)});
+  await t.test('logout invalidates copied session token',async()=>{assert.equal((await request('/auth/logout','POST',{})).status,200);assert.equal((await request('/auth/me')).status,401)});
+ }finally{
+  stopQueue();server.close();await once(server,'close');
+  if(workflowId)await prisma.workflow.delete({where:{id:workflowId}});
+  await prisma.directoryUser.deleteMany({where:{email}});
+  await prisma.user.deleteMany({where:{email:{in:[email,`viewer-${suffix}@example.test`]}}});
+  await prisma.$disconnect();
+ }
+});
