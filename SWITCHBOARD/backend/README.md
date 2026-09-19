@@ -16,7 +16,7 @@ The scheduler uses a PostgreSQL advisory transaction lock and checks each trigge
 
 The Next.js proxy owns the browser's HttpOnly, SameSite session cookie and forwards authentication server-side. JWTs reference a revocable Session row. Authentication rechecks active status, verification and role on every request. Passwords use salted scrypt. Login failures are audited; per-account failure limits persist across restarts. Request-rate limits, Helmet, CORS, request IDs and a 1 MB body limit apply.
 
-ADMIN manages all resources. OPERATOR can edit owned workflows and execute owned or explicitly granted workflows; VIEWER only reads granted resources. Credential references must match the executor type and be granted to operator-owned workflows. AES-256-GCM encrypts credential payloads; list responses never expose ciphertext or plaintext. Keep the encryption key unchanged across routine deployments or existing ciphertext becomes unreadable.
+ADMIN manages all resources. OPERATOR can edit owned workflows and execute owned or explicitly granted workflows; VIEWER only reads granted resources. Credential references must match the executor type and be granted to operator-owned workflows. AES-256-GCM encrypts credential payloads; list responses never expose ciphertext or plaintext. Production network nodes require hosts in `EXECUTION_ALLOWED_HOSTS`. Exact names/IPs and domain suffix entries (`*.example.com`) are supported; automatic HTTP redirects and cloud metadata targets are rejected. Only configure hostnames controlled by your organization or trusted integration providers. Keep the encryption key unchanged across routine deployments or existing ciphertext becomes unreadable.
 
 ## Commands
 

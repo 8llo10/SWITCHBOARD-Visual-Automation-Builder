@@ -36,7 +36,25 @@ test('API, RBAC, queue, directory, approvals, cancellation and session revocatio
     await request(`/workflows/${workflowId}`,'PUT',{definition});
    }finally{await prisma.credential.delete({where:{id:credential.id}})}
   });
+  await t.test('administrator can create, rotate and delete encrypted credentials',async()=>{
+   await prisma.user.update({where:{email},data:{role:'ADMIN'}});let id='';
+   try{
+    const created=await request('/credentials','POST',{name:'Integration API key',type:'API_KEY',data:{secret:'first-test-secret'},allowedWorkflowIds:[]});assert.equal(created.status,201);id=created.data.id;
+    assert.equal(created.data.encryptedData,undefined);assert.equal(created.data.secret,undefined);
+    const stored=await prisma.credential.findUniqueOrThrow({where:{id}});assert(!stored.encryptedData.includes('first-test-secret'));
+    assert.equal((await request(`/credentials/${id}`,'PUT',{name:'Rotated API key',type:'API_KEY',data:{secret:'second-test-secret'},allowedWorkflowIds:[]})).status,200);
+    assert.notEqual((await prisma.credential.findUniqueOrThrow({where:{id}})).encryptedData,stored.encryptedData);
+    assert.equal((await request(`/credentials/${id}`,'DELETE')).status,204);id='';
+   }finally{if(id)await prisma.credential.delete({where:{id}});await prisma.user.update({where:{email},data:{role:'OPERATOR'}})}
+  });
   await t.test('real queued execution persists output and directory state',async()=>{const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Integration Person'}});assert.equal(r.status,202);assert.equal(r.data.status,'QUEUED');await waitFor(r.data.id,'SUCCEEDED');const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});assert.equal(steps.length,2);assert.equal(steps[1].status,'SUCCEEDED');assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Integration Person')});
+  await t.test('directory group, license and disable nodes mutate persisted state',async()=>{
+   const actions=[['groupAdd','addGroup',{email,group:'Operations'}],['licenseAdd','assignLicense',{email,license:'Office'}],['groupRemove','removeGroup',{email,group:'Operations'}],['licenseRemove','revokeLicense',{email,license:'Office'}],['disable','disableUser',{email}]] as const;
+   const nodes=[definition.nodes[0],...actions.map(([id,kind,config])=>({id,type:'custom',position:{x:200,y:0},data:{kind,label:id,config}}))];const edges=nodes.slice(1).map((node,index)=>({id:`edge-${index}`,source:nodes[index].id,target:node.id}));
+   await request(`/workflows/${workflowId}`,'PUT',{definition:{nodes,edges}});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'SUCCEEDED');
+   const user=await prisma.directoryUser.findUniqueOrThrow({where:{email}});assert.equal(user.active,false);assert(!user.groups.includes('Operations'));assert(!user.licenses.includes('Office'));
+   const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});assert((steps.find(s=>s.nodeId==='groupAdd')?.output as any).groups.includes('Operations'));assert((steps.find(s=>s.nodeId==='licenseAdd')?.output as any).licenses.includes('Office'));
+  });
   await t.test('parallel branches join only after both predecessors finish',async()=>{
    const branch=(id:string,ms:number)=>({id,type:'custom',position:{x:200,y:0},data:{kind:'delay',label:id,config:{ms}}});
    const graph={nodes:[definition.nodes[0],branch('fast',10),branch('slow',150),definition.nodes[1]],edges:[{id:'a',source:'start',target:'fast'},{id:'b',source:'start',target:'slow'},{id:'c',source:'fast',target:'create'},{id:'d',source:'slow',target:'create'}]};
@@ -105,7 +123,7 @@ test('API, RBAC, queue, directory, approvals, cancellation and session revocatio
    assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).status,409);
   });
   await t.test('stale worker leases fail safely without replaying effects',async()=>{
-   const run=await prisma.workflowRun.create({data:{workflowId,status:'RUNNING',triggerType:'manual',leaseOwner:'interrupted-worker',leaseUntil:new Date(Date.now()-1000)}});
+   const run=await prisma.workflowRun.create({data:{workflowId,status:'RUNNING',triggerType:'manual',triggerPayload:{},leaseOwner:'interrupted-worker',leaseUntil:new Date(Date.now()-1000)}});
    await prisma.workflowStep.create({data:{runId:run.id,nodeId:'external',nodeType:'http',label:'Uncertain external request',status:'RUNNING'}});await tickQueue();
    assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:run.id}})).status,'FAILED');
    assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:run.id}})).status,'FAILED');

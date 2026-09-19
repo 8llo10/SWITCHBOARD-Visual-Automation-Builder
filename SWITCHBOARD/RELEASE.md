@@ -34,6 +34,7 @@ Backend root: `SWITCHBOARD/backend` on Render.
 | `SMTP_FROM` | Verified sender accepted by the SMTP provider |
 | `EMAIL_VERIFY_TTL_MINUTES` | Optional verification lifetime, default `60` |
 | `EMAIL_VERIFY_RESEND_SECONDS` | Optional resend cooldown, default `60` |
+| `EXECUTION_ALLOWED_HOSTS` | Required for production network integrations: comma-separated approved hostnames/IPs; `*.example.com` permits subdomains. Include HTTP, health, PostgreSQL, SSH and SMTP targets. HTTP redirects are deliberately not followed. |
 | `QUEUE_CONCURRENCY` | Concurrent runs per worker process, `1`–`16`, default `3` |
 
 One-off verification variables: `INTEGRATION_TESTS=1` enables the guarded test suite; `BASELINE_BACKUP_CONFIRMED=yes` confirms an already completed backup for the baseline mark operation. Never put either in production's routine start command. The `SWITCHBOARD_API_KEY` legacy frontend variable is unused and unnecessary.

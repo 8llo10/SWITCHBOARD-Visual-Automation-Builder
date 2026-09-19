@@ -59,7 +59,7 @@ export async function executeRun(runId:string, leaseOwner:string){
     if(!waiting&&Object.keys(outcomes).length!==def.nodes.length)throw new Error('Graph has unresolved dependencies');
     await persist({status:waiting?'WAITING':'SUCCEEDED',finishedAt:waiting?null:new Date(),leaseOwner:null,leaseUntil:null});return;
    }
-   const results=await Promise.all(ready.map(id=>executeOne(runId,def.nodes.find(n=>n.id===id)!,structuredClone(context))));
+   const results=await Promise.all(ready.slice(0,8).map(id=>executeOne(runId,def.nodes.find(n=>n.id===id)!,structuredClone(context))));
    let failure:Error|undefined;
    for(const item of results){
     if(item.error){

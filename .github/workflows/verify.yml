@@ -39,7 +39,7 @@ jobs:
         working-directory: SWITCHBOARD/backend
       - run: npx prisma validate && npx prisma generate && npx prisma migrate deploy
         working-directory: SWITCHBOARD/backend
-      - run: npm run build && npm test && npm run test:integration
+      - run: npm run build && npm test && npx tsc -p tsconfig.test.json && npm run test:integration
         working-directory: SWITCHBOARD/backend
       - run: npm run build
         working-directory: SWITCHBOARD
