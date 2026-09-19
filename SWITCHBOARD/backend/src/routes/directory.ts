@@ -1,1 +1,1 @@
-import{Router}from'express';import{authorize}from'../middleware/auth.js';import*as controller from'../controllers/directory.controller.js';const router=Router();router.get('/users',authorize('ADMIN','OPERATOR'),controller.users);export default router;
+import{Router}from'express';import{authorize}from'../middleware/auth.js';import*as controller from'../controllers/directory.controller.js';const router=Router();router.get('/users',authorize('ADMIN','OPERATOR','VIEWER'),controller.users);export default router;

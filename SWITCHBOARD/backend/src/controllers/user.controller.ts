@@ -3,7 +3,7 @@ import*as service from'../services/user.service.js';
 import{createUserSchema,userStatusSchema}from'../validators/user.validator.js';
 import{audit}from'../services/audit.service.js';
 const param=(v:string|string[])=>Array.isArray(v)?v[0]:v;
-export async function list(_req:Request,res:Response){return res.json(await service.list())}
+export async function list(_req:Request,res:Response){return res.json(await service.list(_req.query))}
 export async function create(req:Request,res:Response){
   const input=createUserSchema.parse(req.body);
   const result=await service.create(input);
