@@ -5,7 +5,8 @@ async function proxy(req:NextRequest,{params}:{params:Promise<{path:string[]}>})
  const {path}=await params;const joined=path.join('/');
  if(!['GET','HEAD'].includes(req.method)){
   const origin=req.headers.get('origin');
-  if(origin&&origin!==req.nextUrl.origin)return NextResponse.json({error:'Invalid request origin'},{status:403});
+  const expectedOrigin=process.env.APP_ORIGIN||`${req.nextUrl.protocol}//${req.headers.get('host')||req.nextUrl.host}`;
+  if(origin&&origin!==expectedOrigin)return NextResponse.json({error:'Invalid request origin'},{status:403});
   if(req.headers.get('sec-fetch-site')==='cross-site')return NextResponse.json({error:'Cross-site request denied'},{status:403});
  }
  const url=`${base}/${joined}${req.nextUrl.search}`;const headers=new Headers();const contentType=req.headers.get('content-type');if(contentType)headers.set('content-type',contentType);

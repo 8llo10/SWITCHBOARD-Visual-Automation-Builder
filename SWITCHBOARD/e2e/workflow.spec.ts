@@ -3,7 +3,9 @@ test('login, create, connect, save, run and read persisted output',async({page})
  await page.goto('/login');
  await page.getByLabel('EMAIL',{exact:true}).fill(process.env.ADMIN_EMAIL!);
  await page.getByLabel('PASSWORD',{exact:true}).fill(process.env.ADMIN_PASSWORD!);
+ const loginResponse=page.waitForResponse(r=>r.url().endsWith('/api/switchboard/auth/login')&&r.request().method()==='POST');
  await page.getByRole('button',{name:'ENTER CONTROL PLANE'}).click();
+ const login=await loginResponse;expect(login.status(),await login.text()).toBe(200);
  await page.getByPlaceholder('Workflow name').fill('Browser acceptance');
  await page.getByRole('button',{name:'Create workflow'}).click();
  await expect(page.locator('.n8n-title')).toContainText('Browser acceptance');

@@ -23,6 +23,7 @@ const schema = z.object({
 export const env = schema.parse(process.env);
 
 if (process.env.NODE_ENV === 'production') {
+  if(env.CREDENTIAL_ENCRYPTION_KEY==='0123456789abcdef'.repeat(4)||/^0+$/.test(env.CREDENTIAL_ENCRYPTION_KEY))throw new Error('Use a randomly generated credential encryption key');
   for (const key of ['JWT_SECRET', 'ADMIN_PASSWORD', 'ADMIN_EMAIL'] as const) {
     if (!process.env[key] || ['dev-only-switchboard-jwt-secret-change-me', 'ChangeMe123!', 'admin@switchboard.local'].includes(env[key])) {
       throw new Error(`${key} must be explicitly configured for production`);

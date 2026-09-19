@@ -5,7 +5,7 @@ const nodeSchema=z.object({
  id:z.string().min(1),
  type:z.string().min(1),
  position:z.object({x:z.number(),y:z.number()}),
- data:z.record(z.any()).default({})
+ data:z.object({kind:z.string().min(1),label:z.string().trim().min(1),config:z.record(z.any()).default({}),retry:z.number().int().min(0).max(5).optional(),continueOnFailure:z.boolean().optional()}).passthrough()
 });
 const edgeSchema=z.object({
  id:z.string().min(1),
@@ -25,6 +25,7 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   if(!String(node.data?.label||'').trim())ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','label'],message:'Node label is required'});
   const c=node.data?.config||{};
   const issue=(field:string,message:string)=>ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config',field],message});
+  for(const key of ['password','privateKey','secret'])if(c[key])issue(key,'Store secrets in a credential and use credentialRef');
   if(kind==='condition'){
    if(!c.field)issue('field','Condition field is required');
    if(!['equals','notEquals','contains','exists','truthy','gt','gte','lt','lte'].includes(c.operator||'equals'))issue('operator','Unsupported condition operator');

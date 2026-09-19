@@ -1,3 +1,4 @@
+import {validateCredentials} from '../services/workflow-credentials.service.js';
 import {readyNodes,type Outcome} from './graph.js';
 import { prisma } from '../config/prisma.js';
 import { log } from '../services/log.service.js';
@@ -46,6 +47,9 @@ export async function executeRun(runId:string, leaseOwner:string){
  const envelope=()=>({workflowVersion:stored?.workflowVersion??run.workflow.version,definitionSnapshot:def,entryNodeId:stored?.entryNodeId||null,runtime:context,outcomes});
  const persist=async(data:any)=>prisma.workflowRun.updateMany({where:{id:runId,status:'RUNNING',leaseOwner},data:{...data,context:envelope() as any}});
  try{
+  const owner=run.workflow.ownerId?await prisma.user.findUnique({where:{id:run.workflow.ownerId},select:{role:true,active:true}}):null;
+  if(!owner?.active)throw new Error('Workflow owner is unavailable');
+  await validateCredentials(def,run.workflowId,owner);
   await log(runId,'Workflow execution started');
   while(true){
    const owner=await prisma.workflowRun.findFirst({where:{id:runId,status:'RUNNING',leaseOwner,leaseUntil:{gt:new Date()}},select:{id:true}});
