@@ -25,10 +25,15 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   if(!String(node.data?.label||'').trim())ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','label'],message:'Node label is required'});
   const c=node.data?.config||{};
   const issue=(field:string,message:string)=>ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config',field],message});
-  for(const key of ['password','privateKey','secret'])if(c[key])issue(key,'Store secrets in a credential and use credentialRef');
+  for(const key of ['password','privateKey','secret','connectionString'])if(c[key])issue(key,'Store secrets in a credential and use credentialRef');
   if(kind==='approval'&&c.timeoutMinutes!==undefined&&(!Number.isFinite(Number(c.timeoutMinutes))||Number(c.timeoutMinutes)<1||Number(c.timeoutMinutes)>10080))issue('timeoutMinutes','Approval deadline must be 1 to 10080 minutes');
+  if(['http','health'].includes(kind)&&c.url&&!String(c.url).includes('{{')){try{const url=new URL(c.url);if(!['http:','https:'].includes(url.protocol))issue('url','Use an HTTP or HTTPS URL')}catch{issue('url','Enter a valid URL')}}
+  if(kind==='schedule'&&!['minutes','hours','days'].includes(c.unit||'minutes'))issue('unit','Choose minutes, hours, or days');
+  if(c.expectedStatus!==undefined&&(!Number.isInteger(Number(c.expectedStatus))||Number(c.expectedStatus)<100||Number(c.expectedStatus)>599))issue('expectedStatus','Expected HTTP status must be 100 to 599');
+  if(kind==='http'&&!['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'].includes(c.method||'GET'))issue('method','Unsupported HTTP method');
   if(kind==='condition'){
    if(!c.field)issue('field','Condition field is required');
+   if(!['truthy','exists'].includes(c.operator||'equals')&&c.value===undefined)issue('value','Comparison value is required');
    if(!['equals','notEquals','contains','exists','truthy','gt','gte','lt','lte'].includes(c.operator||'equals'))issue('operator','Unsupported condition operator');
   }
   if(['addGroup','removeGroup'].includes(kind)&&!c.group)issue('group','Group is required');
@@ -38,7 +43,7 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   if(kind==='delay'&&(!Number.isFinite(Number(c.ms??1000))||Number(c.ms??1000)<0||Number(c.ms??1000)>30000))issue('ms','Delay must be between 0 and 30000 ms');
   if(kind==='health'&&!c.url)ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config','url'],message:'Health Check requires a URL'});
   if(kind==='http'&&!c.url)ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config','url'],message:'HTTP Request requires a URL'});
-  if(kind==='postgres'&&(!c.connectionString&&!c.credentialRef||!c.query))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:'PostgreSQL requires a connection/credential and query'});
+  if(kind==='postgres'&&(!c.credentialRef||!c.query))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:'PostgreSQL requires a saved credential and query'});
   if((kind==='ssh'||kind==='powershell')&&((!c.host||!c.username)&&!c.credentialRef||!c.command))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config'],message:`${kind} requires connection details/credential and command`});
  }
  if(!def.nodes.some(n=>['trigger','webhook','schedule'].includes(String(n.data?.kind))))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes'],message:'Workflow requires at least one trigger node'});

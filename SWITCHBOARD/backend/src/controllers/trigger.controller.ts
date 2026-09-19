@@ -4,3 +4,5 @@ export async function create(req:Request,res:Response){const workflowId=p(req.pa
 export async function update(req:Request,res:Response){const id=p(req.params.id);await accessByTrigger(req,id);const d=triggerSchema.partial().parse(req.body);const t=await service.update(id,d);await audit(req,'trigger.updated','Trigger',t.id,{enabled:t.enabled,type:t.type});return res.json({id:t.id,type:t.type,enabled:t.enabled,config:t.config,updatedAt:t.updatedAt})}
 export async function remove(req:Request,res:Response){const id=p(req.params.id);await accessByTrigger(req,id);await service.remove(id);await audit(req,'trigger.deleted','Trigger',id);return res.status(204).end()}
 export async function rotate(req:Request,res:Response){const id=p(req.params.id);await accessByTrigger(req,id);const t=await service.rotateSecret(id);await audit(req,'trigger.secret.rotated','Trigger',t.id);return res.json({id:t.id,secret:t.secret})}
+
+export async function status(req:Request,res:Response){const id=p(req.params.id);await accessByTrigger(req,id);return res.json(await service.status(id))}

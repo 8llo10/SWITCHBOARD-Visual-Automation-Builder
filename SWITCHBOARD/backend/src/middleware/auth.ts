@@ -1,3 +1,4 @@
+import {sessionDuration} from '../utils/session.js';
 import {issueToken,readToken} from '../utils/jwt.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { Role } from '@prisma/client';
@@ -5,8 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { env } from '../config/env.js';
 import { prisma } from '../config/prisma.js';
 export async function signToken(user:{id:string;email:string;name:string;role:Role}){
- const hours=Math.min(24,Math.max(1,Number.parseInt(env.JWT_EXPIRES_IN,10)||8));
- const expiry=new Date(Date.now()+hours*3600000),sid=randomUUID();
+ const expiry=new Date(Date.now()+sessionDuration(env.JWT_EXPIRES_IN)*1000),sid=randomUUID();
  await prisma.session.create({data:{id:sid,userId:user.id,expiresAt:expiry}});
  return issueToken({sub:user.id,sid,exp:Math.floor(expiry.getTime()/1000)},env.JWT_SECRET);
 }

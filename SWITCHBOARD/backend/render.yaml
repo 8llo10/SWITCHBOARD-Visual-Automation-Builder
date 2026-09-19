@@ -7,6 +7,10 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: QUEUE_CONCURRENCY
+        value: 3
       - key: FRONTEND_URL
         sync: false
       - key: JWT_SECRET

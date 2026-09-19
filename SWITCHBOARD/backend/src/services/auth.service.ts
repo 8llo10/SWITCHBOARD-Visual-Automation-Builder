@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { signToken } from '../middleware/auth.js';
@@ -8,8 +9,11 @@ async function session(user:{id:string;email:string;name:string;role:'ADMIN'|'OP
   return {token:await signToken(user),user:{id:user.id,email:user.email,name:user.name,role:user.role,emailVerifiedAt:user.emailVerifiedAt}};
 }
 
+export const loginIdentity=(email:string)=>createHash('sha256').update(email.trim().toLowerCase()).digest('hex');
 export async function login(email:string,password:string){
   const normalized=email.toLowerCase();
+  const failures=await prisma.auditEvent.count({where:{action:'auth.login.failed',entity:'Login',entityId:loginIdentity(normalized),createdAt:{gte:new Date(Date.now()-15*60*1000)}}});
+  if(failures>=10)return {status:'LOCKED' as const};
   const user=await prisma.user.findUnique({where:{email:normalized}});
   if(!user?.active||!(await verifyPassword(password,user.passwordHash)))return {status:'INVALID' as const};
   const isReservedAdmin=normalized===env.ADMIN_EMAIL.toLowerCase();

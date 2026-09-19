@@ -7,7 +7,8 @@ import * as verificationService from '../services/email-verification.service.js'
 export async function login(req:Request,res:Response){
   const input=loginSchema.parse(req.body);
   const result=await authService.login(input.email,input.password);
-  if(result.status==='INVALID')return res.status(401).json({error:'Invalid email or password'});
+  if(result.status==='LOCKED')return res.status(429).json({error:'Too many sign-in attempts. Try again in 15 minutes.'});
+  if(result.status==='INVALID'){await audit(req,'auth.login.failed','Login',authService.loginIdentity(input.email));return res.status(401).json({error:'Invalid email or password'})}
   if(result.status==='UNVERIFIED')return res.status(403).json({error:'Email verification required',code:'EMAIL_NOT_VERIFIED'});
   req.user={id:result.user.id,email:result.user.email,name:result.user.name,role:result.user.role};await audit(req,'auth.login','User',result.user.id);
   const {status,...payload}=result;
@@ -23,7 +24,7 @@ export async function register(req:Request,res:Response){
     user:result.user,
     verificationRequired:true,
     verificationSent:result.verification.sent,
-    message:result.verification.sent?'Check your email to verify your account.':'Account created. Email delivery is not configured yet.',
+    message:result.verification.sent?'Check your email to verify your account.':'Account created. Email delivery is unavailable. Try resending verification later.',
   });
 }
 

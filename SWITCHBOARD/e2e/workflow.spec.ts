@@ -4,7 +4,7 @@ test('login, create, connect, save, run and read persisted output',async({page})
  await page.getByLabel('EMAIL',{exact:true}).fill(process.env.ADMIN_EMAIL!);
  await page.getByLabel('PASSWORD',{exact:true}).fill(process.env.ADMIN_PASSWORD!);
  const loginResponse=page.waitForResponse(r=>r.url().endsWith('/api/switchboard/auth/login')&&r.request().method()==='POST');
- await page.getByRole('button',{name:'ENTER CONTROL PLANE'}).click();
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
  const login=await loginResponse;expect(login.status(),await login.text()).toBe(200);
  await page.getByPlaceholder('Workflow name').fill('Browser acceptance');
  await page.getByRole('button',{name:'Create workflow'}).click();
@@ -16,6 +16,7 @@ test('login, create, connect, save, run and read persisted output',async({page})
  await page.getByRole('button',{name:'Save',exact:true}).click();
  await expect(page.locator('.n8n-title')).toContainText('Saved');
  await page.getByRole('button',{name:'Execute',exact:true}).click();
+ await page.getByText('Advanced JSON and input preview',{exact:true}).click();
  await page.getByLabel('Input JSON').fill(JSON.stringify({email:'browser-acceptance@example.test',fullName:'Browser Acceptance',department:'IT'}));
  await page.getByRole('button',{name:'Run workflow',exact:true}).click();
  await expect(page.locator('.n8n-runbar')).toContainText('SUCCEEDED',{timeout:30000});
@@ -29,5 +30,11 @@ test('login, create, connect, save, run and read persisted output',async({page})
  expect(await page.evaluate(()=>localStorage.getItem('switchboard_token'))).toBeNull();
  await page.screenshot({path:'test-results/editor-desktop.png'});
  await page.setViewportSize({width:390,height:844});
+ await expect(page.locator('.react-flow__node').first()).toBeInViewport();
+ await expect(page.locator('.react-flow__node').last()).toBeInViewport();
+ await page.getByRole('button',{name:'Runs',exact:true}).scrollIntoViewIfNeeded();
+ await page.getByRole('button',{name:'Runs',exact:true}).click();
+ await expect(page.getByText('Execution history',{exact:true})).toBeVisible();
+ await page.getByLabel('Close panel').click();
  await page.screenshot({path:'test-results/editor-mobile.png'});
 });

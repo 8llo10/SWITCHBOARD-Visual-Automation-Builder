@@ -3,11 +3,7 @@ import {readyNodes,type Outcome} from './graph.js';
 import { prisma } from '../config/prisma.js';
 import { log } from '../services/log.service.js';
 import { executeNode } from './executors/index.js';
-import type { EngineContext,WorkflowDefinition,WorkflowEdge,WorkflowNode } from '../types/workflow.js';
-function outgoing(edges:WorkflowEdge[],nodeId:string){return edges.filter(e=>e.source===nodeId)}
-function roots(def:WorkflowDefinition){const targets=new Set(def.edges.map(e=>e.target));return def.nodes.filter(n=>!targets.has(n.id))}
-function nextEdges(edges:WorkflowEdge[],nodeId:string,route?:string|boolean){const out=outgoing(edges,nodeId);if(route===undefined)return out;if(out.some(e=>e.data?.when!==undefined))return out.filter(e=>String(e.data?.when)===String(route));return out}
-function hasJoins(def:WorkflowDefinition){const counts=new Map<string,number>();for(const e of def.edges)counts.set(e.target,(counts.get(e.target)||0)+1);return [...counts.values()].some(n=>n>1)}
+import type { EngineContext,WorkflowDefinition,WorkflowNode } from '../types/workflow.js';
 async function cancelled(runId:string){const row=await prisma.workflowRun.findUnique({where:{id:runId},select:{status:true}});return row?.status==='CANCELLED'}
 
 type NodeResult={node:WorkflowNode;result?:any;error?:Error;wait?:boolean};
@@ -50,6 +46,7 @@ export async function executeRun(runId:string, leaseOwner:string){
   const owner=run.workflow.ownerId?await prisma.user.findUnique({where:{id:run.workflow.ownerId},select:{role:true,active:true}}):null;
   if(!owner?.active)throw new Error('Workflow owner is unavailable');
   await validateCredentials(def,run.workflowId,owner);
+  if(!stored?.outcomes){for(const [nodeId,outcome] of Object.entries(outcomes))if(outcome.status==='SKIPPED'){const node=def.nodes.find(n=>n.id===nodeId)!;await prisma.workflowStep.create({data:{runId,nodeId,nodeType:String(node.data.kind),label:node.data.label,status:'SKIPPED',finishedAt:new Date()}})}}
   await log(runId,'Workflow execution started');
   while(true){
    const owner=await prisma.workflowRun.findFirst({where:{id:runId,status:'RUNNING',leaseOwner,leaseUntil:{gt:new Date()}},select:{id:true}});
@@ -71,6 +68,7 @@ export async function executeRun(runId:string, leaseOwner:string){
      context.outputs[item.node.id]={error:'Node execution failed'};
      if(!item.node.data.continueOnFailure)failure=item.error;
     }else{
+     if(['createUser','disableUser','addGroup','removeGroup','assignLicense','revokeLicense'].includes(item.node.data.kind))await prisma.auditEvent.create({data:{actorId:run.workflow.ownerId,action:`directory.${item.node.data.kind}`,entity:'DirectoryUser',entityId:item.result?.output?.id,metadata:{runId,nodeId:item.node.id}}});
      context.outputs[item.node.id]=item.result?.output??null;
      context.vars.last=item.result?.output??null;
      outcomes[item.node.id]={status:item.wait?'WAITING':'SUCCEEDED',...(item.result?.route!==undefined?{route:item.result.route}:{})};

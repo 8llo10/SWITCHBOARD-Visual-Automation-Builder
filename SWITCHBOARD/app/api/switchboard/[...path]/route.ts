@@ -11,6 +11,7 @@ async function proxy(req:NextRequest,{params}:{params:Promise<{path:string[]}>})
  }
  const url=`${base}/${joined}${req.nextUrl.search}`;const headers=new Headers();const contentType=req.headers.get('content-type');if(contentType)headers.set('content-type',contentType);
  const cookieToken=req.cookies.get(COOKIE)?.value;const legacyAuth=req.headers.get('authorization');if(cookieToken)headers.set('authorization',`Bearer ${cookieToken}`);else if(legacyAuth)headers.set('authorization',legacyAuth);
+ const webhookSecret=req.headers.get('x-switchboard-secret');if(joined.startsWith('webhooks/')&&webhookSecret)headers.set('x-switchboard-secret',webhookSecret);
  const requestId=req.headers.get('x-request-id');if(requestId)headers.set('x-request-id',requestId);
  const init:RequestInit={method:req.method,headers,cache:'no-store',signal:AbortSignal.timeout(30000)};if(!['GET','HEAD'].includes(req.method))init.body=await req.text();
  try{
