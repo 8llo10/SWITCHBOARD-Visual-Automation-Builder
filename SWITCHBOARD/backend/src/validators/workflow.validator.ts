@@ -15,7 +15,7 @@ const edgeSchema=z.object({
  data:z.object({when:z.union([z.string(),z.boolean()]).optional()}).passthrough().optional()
 });
 
-export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1),edges:z.array(edgeSchema)}).superRefine((def,ctx)=>{
+export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1).max(1000),edges:z.array(edgeSchema).max(3000)}).superRefine((def,ctx)=>{
  const ids=new Set<string>();
  for(const[n,node]of def.nodes.entries()){
   if(ids.has(node.id))ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'id'],message:`Duplicate node id: ${node.id}`});
@@ -26,6 +26,7 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   const c=node.data?.config||{};
   const issue=(field:string,message:string)=>ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config',field],message});
   for(const key of ['password','privateKey','secret'])if(c[key])issue(key,'Store secrets in a credential and use credentialRef');
+  if(kind==='approval'&&c.timeoutMinutes!==undefined&&(!Number.isFinite(Number(c.timeoutMinutes))||Number(c.timeoutMinutes)<1||Number(c.timeoutMinutes)>10080))issue('timeoutMinutes','Approval deadline must be 1 to 10080 minutes');
   if(kind==='condition'){
    if(!c.field)issue('field','Condition field is required');
    if(!['equals','notEquals','contains','exists','truthy','gt','gte','lt','lte'].includes(c.operator||'equals'))issue('operator','Unsupported condition operator');
@@ -49,6 +50,7 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   if(!ids.has(e.target))ctx.addIssue({code:z.ZodIssueCode.custom,path:['edges',i,'target'],message:`Unknown target node: ${e.target}`});
   if(e.source===e.target)ctx.addIssue({code:z.ZodIssueCode.custom,path:['edges',i],message:'Self-connections are not allowed'});
  }
+ for(const [index,node] of def.nodes.entries()){const incoming=def.edges.some(e=>e.target===node.id);const trigger=['trigger','webhook','schedule'].includes(String(node.data.kind));if(trigger&&incoming)ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',index],message:'Trigger nodes cannot have incoming connections'});if(!trigger&&!incoming)ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',index],message:'Connect this node to a trigger path'});}
  const adj=new Map<string,string[]>();for(const id of ids)adj.set(id,[]);for(const e of def.edges)if(ids.has(e.source)&&ids.has(e.target))adj.get(e.source)!.push(e.target);
  const visiting=new Set<string>(),visited=new Set<string>();let cycle=false;const walk=(id:string)=>{if(visiting.has(id)){cycle=true;return}if(visited.has(id)||cycle)return;visiting.add(id);for(const n of adj.get(id)||[])walk(n);visiting.delete(id);visited.add(id)};for(const id of ids)walk(id);
  if(cycle)ctx.addIssue({code:z.ZodIssueCode.custom,path:['edges'],message:'Workflow graph cannot contain cycles'});
@@ -58,4 +60,4 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
  }
 });
 
-export const workflowSchema=z.object({name:z.string().min(1).max(120),slug:z.string().regex(/^[a-z0-9-]+$/),description:z.string().max(1000).optional(),status:z.enum(['DRAFT','ACTIVE','ARCHIVED']).optional(),definition:workflowDefinitionSchema});
+export const workflowSchema=z.object({name:z.string().min(1).max(120),permittedUserIds:z.array(z.string().min(1)).max(500).optional(),slug:z.string().regex(/^[a-z0-9-]+$/),description:z.string().max(1000).optional(),status:z.enum(['DRAFT','ACTIVE','ARCHIVED']).optional(),definition:workflowDefinitionSchema});

@@ -1,5 +1,8 @@
 name: Verify SWITCHBOARD
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -45,7 +48,7 @@ jobs:
       - run: npx playwright test
         working-directory: SWITCHBOARD
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: always()
         with:
           name: browser-traces
           path: SWITCHBOARD/test-results

@@ -27,4 +27,7 @@ test('login, create, connect, save, run and read persisted output',async({page})
  const cookies=await page.context().cookies();
  expect(cookies.find(c=>c.name==='switchboard_session')?.httpOnly).toBe(true);
  expect(await page.evaluate(()=>localStorage.getItem('switchboard_token'))).toBeNull();
+ await page.screenshot({path:'test-results/editor-desktop.png'});
+ await page.setViewportSize({width:390,height:844});
+ await page.screenshot({path:'test-results/editor-mobile.png'});
 });

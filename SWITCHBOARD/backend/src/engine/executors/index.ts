@@ -53,6 +53,6 @@ async function executeConfigured(node:WorkflowNode,ctx:EngineContext,c:any):Prom
  if(kind==='ssh'||kind==='powershell'){
    if(!c.host||!c.username||!c.command)throw new Error(`${kind} requires host, username and command`);return {output:await new Promise((resolve,reject)=>{const client=new SSHClient();let stdout='',stderr='';const timeout=setTimeout(()=>{client.end();reject(new Error('Remote command timed out'))},Math.min(120000,Number(c.timeoutMs)||30000));client.once('close',()=>clearTimeout(timeout));client.on('ready',()=>client.exec(kind==='powershell'?`powershell.exe -NoProfile -NonInteractive -EncodedCommand ${Buffer.from(String(c.command),'utf16le').toString('base64')}`:c.command,(err,stream)=>{if(err){client.end();return reject(err)}stream.on('close',(code:number)=>{client.end();code===0?resolve({code,stdout,stderr}):reject(new Error(`${kind} exited with code ${code}`))}).on('data',(d:Buffer)=>stdout+=d.toString());stream.stderr.on('data',(d:Buffer)=>stderr+=d.toString())})).on('error',reject).connect({host:c.host,port:Number(c.port||22),username:c.username,password:c.password,privateKey:c.privateKey,readyTimeout:10000})})};
  }
- if(kind==='approval') return {output:{message:c.message||'Approval required'},wait:true};
+ if(kind==='approval') return {output:{message:c.message||'Approval required',approverEmail:c.approverEmail||null,deadline:c.timeoutMinutes?new Date(Date.now()+Number(c.timeoutMinutes)*60000).toISOString():null,timeoutBehavior:'fail'},wait:true};
  throw new Error(`Unsupported node kind: ${kind}`);
 }

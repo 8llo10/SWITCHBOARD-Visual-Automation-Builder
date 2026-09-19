@@ -1,9 +1,10 @@
 import {validateCredentials} from './workflow-credentials.service.js';
 import {workflowDefinitionSchema} from '../validators/workflow.validator.js';
 import{prisma}from'../config/prisma.js';
-export const list=(user:{id:string;role:string})=>prisma.workflow.findMany({where:user.role==='ADMIN'?{}:{ownerId:user.id},orderBy:{updatedAt:'desc'}});
+export const list=(user:{id:string;role:string})=>prisma.workflow.findMany({where:user.role==='ADMIN'?{}:{OR:[{ownerId:user.id},{permittedUserIds:{has:user.id}}]},orderBy:{updatedAt:'desc'}});
 export const find=(id:string)=>prisma.workflow.findUniqueOrThrow({where:{id}});
-export const canAccess=(w:{ownerId:string|null},u:{id:string;role:string})=>u.role==='ADMIN'||w.ownerId===u.id;
+export const canAccess=(w:{ownerId:string|null;permittedUserIds?:string[]},u:{id:string;role:string})=>u.role==='ADMIN'||w.ownerId===u.id||!!w.permittedUserIds?.includes(u.id);
+export const canEdit=(w:{ownerId:string|null},u:{id:string;role:string})=>u.role==='ADMIN'||(u.role==='OPERATOR'&&w.ownerId===u.id);
 export const create=(input:any,ownerId:string)=>prisma.workflow.create({data:{...input,ownerId}});
 export const update=(id:string,input:any)=>prisma.workflow.update({where:{id},data:{...input,version:{increment:1}}});
 export const remove=(id:string)=>prisma.workflow.delete({where:{id}});

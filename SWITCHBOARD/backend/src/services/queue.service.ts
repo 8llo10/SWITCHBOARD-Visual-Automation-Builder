@@ -15,6 +15,17 @@ async function recoverInterrupted(){
   await tx.workflowStep.updateMany({where:{runId:{in:ids},status:'RUNNING'},data:{status:'FAILED',error:'Worker lease expired; effect may have completed',finishedAt:new Date()}});
  });
 }
+async function expireApprovals(){
+ const steps=await prisma.workflowStep.findMany({where:{status:'WAITING',run:{status:'WAITING'}},select:{id:true,runId:true,output:true}});
+ for(const step of steps){
+  const deadline=(step.output as {deadline?:string}|null)?.deadline;
+  if(!deadline||Date.parse(deadline)>Date.now())continue;
+  await prisma.$transaction(async tx=>{
+   const changed=await tx.workflowRun.updateMany({where:{id:step.runId,status:'WAITING',steps:{some:{id:step.id,status:'WAITING'}}},data:{status:'FAILED',error:'Approval timed out',finishedAt:new Date()}});
+   if(changed.count){await tx.workflowStep.updateMany({where:{runId:step.runId,status:'WAITING'},data:{status:'FAILED',error:'Approval timed out',finishedAt:new Date()}});await tx.runLog.create({data:{runId:step.runId,level:'warn',message:'Approval deadline expired'}})}
+  });
+ }
+}
 async function launch(id:string,owner:string){
  const heartbeat=setInterval(()=>{void prisma.workflowRun.updateMany({where:{id,status:'RUNNING',leaseOwner:owner},data:{leaseUntil:new Date(Date.now()+leaseMs)}}).catch(()=>{lastError='Worker heartbeat failed'})},10000);
  try{await executeRun(id,owner)}catch{lastError='Worker execution failed'}finally{clearInterval(heartbeat);active.delete(id)}
@@ -22,7 +33,7 @@ async function launch(id:string,owner:string){
 export async function tickQueue(){
  if(busy)return;busy=true;
  try{
-  await recoverInterrupted();
+  await recoverInterrupted();await expireApprovals();
   for(let room=concurrency-active.size;room>0;room--){
    const owner=randomUUID();
    const rows=await prisma.$queryRaw<Array<{id:string}>>`

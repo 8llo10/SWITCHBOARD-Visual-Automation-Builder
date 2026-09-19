@@ -2,7 +2,7 @@
 
 No production database was connected or modified during this change. The connected Supabase account did not expose an identifiable SWITCHBOARD project. Its actual schema, data, RLS and migration history remain unverified.
 
-`20260918000000_baseline` describes the repository schema at commit `1c05cdb78cfc6a02dceaa660c487e822e39d2169`. It must **never be executed on an existing populated database**. The following sessions/leases migration is additive.
+`20260918000000_baseline` describes the repository schema at commit `1c05cdb78cfc6a02dceaa660c487e822e39d2169`. It must **never be executed on an existing populated database**. The following sessions/leases, credential grants, and workflow access migrations are additive. Unshared credentials remain usable only by administrator-owned workflows. Review grants for operator-owned workflows before deployment.
 
 1. Take a restorable backup and verify the target host/database. Stop old workers before deployment, so workers using incompatible lease protocols cannot overlap.
 2. Set `DATABASE_URL` and `DIRECT_URL` securely. Use the direct/session database connection for migration operations.

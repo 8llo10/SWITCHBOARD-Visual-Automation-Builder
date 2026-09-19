@@ -33,9 +33,39 @@ test('API, RBAC, queue, directory, approvals, cancellation and session revocatio
    }finally{await prisma.credential.delete({where:{id:credential.id}})}
   });
   await t.test('real queued execution persists output and directory state',async()=>{const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Integration Person'}});assert.equal(r.status,202);assert.equal(r.data.status,'QUEUED');await waitFor(r.data.id,'SUCCEEDED');const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});assert.equal(steps.length,2);assert.equal(steps[1].status,'SUCCEEDED');assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Integration Person')});
+  await t.test('parallel branches join only after both predecessors finish',async()=>{
+   const branch=(id:string,ms:number)=>({id,type:'custom',position:{x:200,y:0},data:{kind:'delay',label:id,config:{ms}}});
+   const graph={nodes:[definition.nodes[0],branch('fast',10),branch('slow',150),definition.nodes[1]],edges:[{id:'a',source:'start',target:'fast'},{id:'b',source:'start',target:'slow'},{id:'c',source:'fast',target:'create'},{id:'d',source:'slow',target:'create'}]};
+   assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:graph})).status,200);
+   const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Joined Person'}});await waitFor(r.data.id,'SUCCEEDED');
+   const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});const join=steps.find(s=>s.nodeId==='create')!;
+   for(const id of ['fast','slow'])assert(join.startedAt!.getTime()>=steps.find(s=>s.nodeId===id)!.finishedAt!.getTime());
+   assert.equal(steps.filter(s=>s.nodeId==='create').length,1);
+  });
+  await t.test('condition skips the unselected path and resolves its join',async()=>{
+   const graph={nodes:[definition.nodes[0],{id:'condition',type:'custom',position:{x:100,y:0},data:{kind:'condition',label:'Condition',config:{field:'trigger.ok',operator:'equals',value:true}}},{id:'yes',type:'custom',position:{x:200,y:0},data:{kind:'noop',label:'Yes',config:{}}},{id:'no',type:'custom',position:{x:200,y:100},data:{kind:'noop',label:'No',config:{}}},definition.nodes[1]],edges:[{id:'a',source:'start',target:'condition'},{id:'b',source:'condition',target:'yes',data:{when:true}},{id:'c',source:'condition',target:'no',data:{when:false}},{id:'d',source:'yes',target:'create'},{id:'e',source:'no',target:'create'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Conditional Person',ok:true}});await waitFor(r.data.id,'SUCCEEDED');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:r.data.id,nodeId:'no'}})).status,'SKIPPED');
+  });
+  await t.test('webhook secrets authenticate and enqueue real work',async()=>{
+   const graph={nodes:[{...definition.nodes[0],data:{kind:'webhook',label:'Webhook',config:{}}},definition.nodes[1]],edges:definition.edges};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph,status:'ACTIVE'});
+   const trigger=await request(`/triggers/workflow/${workflowId}`,'POST',{type:'WEBHOOK',enabled:true,config:{nodeId:'start'}});assert.equal(trigger.status,201);
+   assert.equal((await fetch(`${base}/webhooks/integration-${suffix}`,{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status,401);
+   const res=await fetch(`${base}/webhooks/integration-${suffix}`,{method:'POST',headers:{'content-type':'application/json','x-switchboard-secret':trigger.data.secret},body:JSON.stringify({email,fullName:'Webhook Person'})});assert.equal(res.status,202);const r=await res.json();await waitFor(r.runId,'SUCCEEDED');
+   await request(`/triggers/${trigger.data.id}`,'DELETE');
+  });
+  await t.test('scheduler creates a single queued run per interval',async()=>{
+   const {tick}=await import('../src/services/scheduler.service.js');
+   const graph={nodes:[{...definition.nodes[0],data:{kind:'schedule',label:'Schedule',config:{every:5,unit:'minutes'}}}],edges:[]};await request(`/workflows/${workflowId}`,'PUT',{definition:graph,status:'ACTIVE'});
+   const trigger=await request(`/triggers/workflow/${workflowId}`,'POST',{type:'SCHEDULE',enabled:true,config:{nodeId:'start',every:5,unit:'minutes'}});assert.equal(trigger.status,201);
+   await Promise.all([tick(),tick()]);await tick();
+   const runs=await prisma.workflowRun.findMany({where:{workflowId,triggerType:`schedule:${trigger.data.id}`}});assert.equal(runs.length,1);assert.equal(runs[0].status,'QUEUED');await waitFor(runs[0].id,'SUCCEEDED');
+   await request(`/triggers/${trigger.data.id}`,'DELETE');
+  });
   await t.test('approval pauses and resumes through queue',async()=>{const approval={...definition,nodes:[definition.nodes[0],{id:'approval',type:'custom',position:{x:200,y:0},data:{kind:'approval',label:'Approve',config:{}}},definition.nodes[1]],edges:[{id:'a',source:'start',target:'approval'},{id:'b',source:'approval',target:'create'}]};assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:approval})).status,200);const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Approved Person'}});await waitFor(r.data.id,'WAITING');assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).data.status,'QUEUED');await waitFor(r.data.id,'SUCCEEDED');assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Approved Person')});
   await t.test('cancelled queued run cannot be claimed',async()=>{const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Never'}});assert.equal((await request(`/runs/${r.data.id}/cancel`,'POST',{})).status,200);await tickQueue();assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:r.data.id}})).status,'CANCELLED')});
-  await t.test('another account cannot read the workflow',async()=>{const other=await prisma.user.create({data:{email:`viewer-${suffix}@example.test`,name:'Viewer',role:'VIEWER',emailVerifiedAt:new Date(),passwordHash:await hashPassword('Test-password-123!')}});const login=await request('/auth/login','POST',{email:other.email,password:'Test-password-123!'},'');assert.equal((await request(`/workflows/${workflowId}`,'GET',undefined,login.data.token)).status,403);assert.equal((await request('/workflows','POST',{name:'No',slug:'no',definition},login.data.token)).status,403)});
+  await t.test('another account cannot read the workflow',async()=>{const other=await prisma.user.create({data:{email:`viewer-${suffix}@example.test`,name:'Viewer',role:'VIEWER',emailVerifiedAt:new Date(),passwordHash:await hashPassword('Test-password-123!')}});const login=await request('/auth/login','POST',{email:other.email,password:'Test-password-123!'},'');assert.equal((await request(`/workflows/${workflowId}`,'GET',undefined,login.data.token)).status,403);await prisma.workflow.update({where:{id:workflowId},data:{permittedUserIds:[other.id]}});assert.equal((await request(`/workflows/${workflowId}`,'GET',undefined,login.data.token)).status,200);assert.equal((await request(`/workflows/${workflowId}/run`,'POST',{payload:{}},login.data.token)).status,403);assert.equal((await request(`/workflows/${workflowId}`,'PUT',{name:'Denied'},login.data.token)).status,403);assert.equal((await request('/workflows','POST',{name:'No',slug:'no',definition},login.data.token)).status,403)});
   await t.test('logout invalidates copied session token',async()=>{assert.equal((await request('/auth/logout','POST',{})).status,200);assert.equal((await request('/auth/me')).status,401)});
  }finally{
   stopQueue();server.close();await once(server,'close');

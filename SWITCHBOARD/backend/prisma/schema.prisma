@@ -75,6 +75,7 @@ model Workflow {
   status      WorkflowStatus @default(DRAFT)
   definition  Json
   version     Int            @default(1)
+  permittedUserIds String[] @default([])
   ownerId     String?
   owner       User?          @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   createdAt   DateTime       @default(now())
