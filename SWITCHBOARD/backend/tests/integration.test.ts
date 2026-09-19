@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
+import {createServer as createSmtpServer,type Socket} from 'node:net';
 import {createHash} from 'node:crypto';
 const url=new URL(process.env.DATABASE_URL||'postgresql://localhost/missing');
 if(process.env.INTEGRATION_TESTS!=='1'||!['localhost','127.0.0.1'].includes(url.hostname)||!url.pathname.endsWith('_test'))throw new Error('Integration tests require an explicitly enabled local *_test database');
@@ -55,6 +56,27 @@ test('API, RBAC, queue, directory, approvals, cancellation and session revocatio
    const user=await prisma.directoryUser.findUniqueOrThrow({where:{email}});assert.equal(user.active,false);assert(!user.groups.includes('Operations'));assert(!user.licenses.includes('Office'));
    const steps=await prisma.workflowStep.findMany({where:{runId:r.data.id}});assert((steps.find(s=>s.nodeId==='groupAdd')?.output as any).groups.includes('Operations'));assert((steps.find(s=>s.nodeId==='licenseAdd')?.output as any).licenses.includes('Office'));
   });
+  await t.test('email node sends through an authenticated SMTP connection',async()=>{
+   const received:string[]=[],sockets=new Set<Socket>();
+   const smtp=createSmtpServer(socket=>{
+    sockets.add(socket);socket.on('close',()=>sockets.delete(socket));socket.setEncoding('utf8');socket.write('220 localhost test SMTP\r\n');
+    let buffer='',message='',dataMode=false;
+    socket.on('data',chunk=>{buffer+=String(chunk);let end:number;while((end=buffer.indexOf('\r\n'))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+2);
+     if(dataMode){if(line==='.'){received.push(message);message='';dataMode=false;socket.write('250 Message accepted\r\n')}else message+=line+'\n';continue}
+     if(/^EHLO/i.test(line))socket.write('250-localhost\r\n250 AUTH PLAIN\r\n');
+     else if(/^AUTH/i.test(line))socket.write('235 Authentication successful\r\n');
+     else if(/^DATA/i.test(line)){dataMode=true;socket.write('354 End with a dot\r\n')}
+     else if(/^QUIT/i.test(line))socket.end('221 Goodbye\r\n');
+     else socket.write('250 OK\r\n');
+    }});
+   });smtp.listen(0,'127.0.0.1');await once(smtp,'listening');const address=smtp.address();assert(address&&typeof address==='object');
+   const credential=await prisma.credential.create({data:{name:'Local SMTP integration',type:'SMTP',allowedWorkflowIds:[workflowId],encryptedData:encryptJson({host:'127.0.0.1',port:address.port,username:'test',password:'test-only-password'})}});
+   try{
+    const graph={nodes:[definition.nodes[0],{id:'mail',type:'custom',position:{x:200,y:0},data:{kind:'email',label:'Send real SMTP message',config:{credentialRef:credential.id,to:'recipient@example.test',subject:'Integration mail',text:'Hello from queue'}}}],edges:[{id:'a',source:'start',target:'mail'}]};
+    assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:graph})).status,200);const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'SUCCEEDED');
+    assert.equal(received.length,1);assert.match(received[0],/Subject: Integration mail/);assert.match(received[0],/Hello from queue/);
+   }finally{for(const socket of sockets)socket.destroy();await new Promise<void>(resolve=>smtp.close(()=>resolve()));await prisma.credential.delete({where:{id:credential.id}})}
+  });
   await t.test('parallel branches join only after both predecessors finish',async()=>{
    const branch=(id:string,ms:number)=>({id,type:'custom',position:{x:200,y:0},data:{kind:'delay',label:id,config:{ms}}});
    const graph={nodes:[definition.nodes[0],branch('fast',10),branch('slow',150),definition.nodes[1]],edges:[{id:'a',source:'start',target:'fast'},{id:'b',source:'start',target:'slow'},{id:'c',source:'fast',target:'create'},{id:'d',source:'slow',target:'create'}]};
@@ -86,6 +108,16 @@ test('API, RBAC, queue, directory, approvals, cancellation and session revocatio
    await request(`/triggers/${trigger.data.id}`,'DELETE');
   });
   await t.test('approval pauses and resumes through queue',async()=>{const approval={...definition,nodes:[definition.nodes[0],{id:'approval',type:'custom',position:{x:200,y:0},data:{kind:'approval',label:'Approve',config:{}}},definition.nodes[1]],edges:[{id:'a',source:'start',target:'approval'},{id:'b',source:'approval',target:'create'}]};assert.equal((await request(`/workflows/${workflowId}`,'PUT',{definition:approval})).status,200);const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Approved Person'}});await waitFor(r.data.id,'WAITING');assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).data.status,'QUEUED');await waitFor(r.data.id,'SUCCEEDED');assert.equal((await prisma.directoryUser.findUniqueOrThrow({where:{email}})).fullName,'Approved Person')});
+  await t.test('one approved branch resumes while another approval remains waiting',async()=>{
+   const approval=(id:string,approverEmail:string)=>({id,type:'custom',position:{x:200,y:0},data:{kind:'approval',label:id,config:{approverEmail}}});
+   const graph={nodes:[definition.nodes[0],approval('own',email),approval('other','other@example.test'),{id:'afterOwn',type:'custom',position:{x:400,y:0},data:{kind:'noop',label:'Approved branch continuation',config:{}}}],edges:[{id:'a',source:'start',target:'own'},{id:'b',source:'start',target:'other'},{id:'c',source:'own',target:'afterOwn'}]};
+   await request(`/workflows/${workflowId}`,'PUT',{definition:graph});const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{}});await waitFor(r.data.id,'WAITING');
+   assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).data.status,'QUEUED');await waitFor(r.data.id,'WAITING');
+   assert.equal((await prisma.workflowStep.findFirstOrThrow({where:{runId:r.data.id,nodeId:'afterOwn'}})).status,'SUCCEEDED');
+   assert.equal((await request(`/runs/${r.data.id}/approve`,'POST',{})).status,409);
+   await prisma.user.update({where:{email},data:{role:'ADMIN'}});
+   try{await request(`/runs/${r.data.id}/approve`,'POST',{});await waitFor(r.data.id,'SUCCEEDED')}finally{await prisma.user.update({where:{email},data:{role:'OPERATOR'}})}
+  });
   await t.test('cancelled queued run cannot be claimed',async()=>{const r=await request(`/workflows/${workflowId}/run`,'POST',{payload:{email,fullName:'Never'}});assert.equal((await request(`/runs/${r.data.id}/cancel`,'POST',{})).status,200);await tickQueue();assert.equal((await prisma.workflowRun.findUniqueOrThrow({where:{id:r.data.id}})).status,'CANCELLED')});
   await t.test('cancellation while a node is running remains terminal',async()=>{
    const graph={nodes:[definition.nodes[0],{id:'slow',type:'custom',position:{x:200,y:0},data:{kind:'delay',label:'Slow step',config:{ms:350}}}],edges:[{id:'a',source:'start',target:'slow'}]};

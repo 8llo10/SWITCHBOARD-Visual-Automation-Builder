@@ -37,6 +37,10 @@ jobs:
         working-directory: SWITCHBOARD
       - run: npm ci
         working-directory: SWITCHBOARD/backend
+      - run: npm audit --omit=dev --audit-level=moderate
+        working-directory: SWITCHBOARD
+      - run: npm audit --omit=dev --audit-level=moderate
+        working-directory: SWITCHBOARD/backend
       - run: npx prisma validate && npx prisma generate && npx prisma migrate deploy
         working-directory: SWITCHBOARD/backend
       - run: npm run build && npm test && npx tsc -p tsconfig.test.json && npm run test:integration

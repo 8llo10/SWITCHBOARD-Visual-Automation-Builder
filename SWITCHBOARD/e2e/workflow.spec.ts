@@ -37,4 +37,36 @@ test('login, create, connect, save, run and read persisted output',async({page})
  await expect(page.getByText('Execution history',{exact:true})).toBeVisible();
  await page.getByLabel('Close panel').click();
  await page.screenshot({path:'test-results/editor-mobile.png'});
+ await page.getByLabel('Log out',{exact:true}).click();
+ await expect(page).toHaveURL(/\/login$/);
+ expect((await page.context().cookies()).some(cookie=>cookie.name==='switchboard_session')).toBe(false);
+ expect((await page.request.get('/api/switchboard/auth/me')).status()).toBe(401);
+});
+
+test('workflow switcher manages rename, export, import, duplicate, archive, restore and delete',async({page},testInfo)=>{
+ await page.goto('/login');
+ await page.getByLabel('EMAIL',{exact:true}).fill(process.env.ADMIN_EMAIL!);
+ await page.getByLabel('PASSWORD',{exact:true}).fill(process.env.ADMIN_PASSWORD!);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.locator('.n8n-title')).toBeVisible();
+ const openSwitcher=async()=>{if(!await page.locator('.workflow-switcher').isVisible())await page.getByTitle('Workflows',{exact:true}).click()};
+ const openActions=async()=>{await openSwitcher();const row=page.locator('.workflow-switcher-row.current');if(!await row.locator('.workflow-actions-pop').isVisible())await row.getByTitle('Actions',{exact:true}).click();return row};
+ let row=await openActions();await row.getByRole('button',{name:'Edit details'}).click();
+ await page.getByRole('dialog').getByLabel('Name',{exact:true}).fill('Managed acceptance');
+ await page.getByRole('dialog').getByLabel('Description',{exact:true}).fill('Persisted workflow details');
+ await page.getByRole('button',{name:'Save details',exact:true}).click();
+ await expect(page.locator('.n8n-title')).toContainText('Managed acceptance');
+ row=await openActions();const downloadPromise=page.waitForEvent('download');await row.getByRole('button',{name:'Export',exact:true}).click();
+ const download=await downloadPromise;const path=testInfo.outputPath('workflow.switchboard.json');await download.saveAs(path);
+ await page.locator('.workflow-switcher input[type=file]').setInputFiles(path);
+ await expect(page.locator('.workflow-switcher')).not.toBeVisible();
+ row=await openActions();await row.getByRole('button',{name:'Duplicate',exact:true}).click();
+ await expect(page.locator('.n8n-title')).toContainText('Managed acceptance copy');
+ row=await openActions();await row.getByRole('button',{name:'Archive',exact:true}).click();
+ await expect(page.locator('.n8n-title')).toContainText('ARCHIVED');
+ row=await openActions();await row.getByRole('button',{name:'Restore',exact:true}).click();
+ await expect(page.locator('.n8n-title')).toContainText('DRAFT');
+ const deletedId=new URL(page.url()).pathname.split('/').at(-1);row=await openActions();page.once('dialog',dialog=>void dialog.accept());await row.getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(page).not.toHaveURL(new RegExp(deletedId!));
+ expect((await page.request.get(`/api/switchboard/workflows/${deletedId}`)).status()).toBe(404);
 });

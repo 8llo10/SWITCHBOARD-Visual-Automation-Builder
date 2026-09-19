@@ -9,7 +9,7 @@ export async function approve(id:string,approvedBy:string,isAdmin=false){
   const eligible=steps.filter(step=>{const assigned=(step.output as any)?.approverEmail;return isAdmin||!assigned||String(assigned).toLowerCase()===approvedBy.toLowerCase()});
   if(!eligible.length)return null;
   for(const step of eligible)await tx.workflowStep.update({where:{id:step.id},data:{status:'SUCCEEDED',output:{approved:true,approvedBy,approvedAt:new Date().toISOString()},finishedAt:new Date()}});
-  const status=eligible.length===steps.length?'QUEUED':'WAITING';await tx.workflowRun.update({where:{id},data:{status}});
+  const status='QUEUED';await tx.workflowRun.update({where:{id},data:{status}});
   return {runId:id,status};
  });
 }

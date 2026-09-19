@@ -1,45 +1,13 @@
 # SWITCHBOARD — Visual IT Automation Builder
 
-SWITCHBOARD is a visual IT automation platform for building and executing real workflows using drag-and-drop nodes, system integrations, and live execution.
+A workflow-first automation workspace for IT operations, built with Next.js 15, React 19, React Flow, Express 5, Prisma and PostgreSQL.
 
-## What it does
+The editor supports real persisted runs, conditional and parallel branches, approvals, manual/webhook/schedule triggers, encrypted integration credentials, directory actions and audited access controls. PostgreSQL provides the queue and distributed scheduler coordination without an additional paid service.
 
-Users can compose operational workflows on a visual canvas, connect actions and conditions, configure each node, and run the workflow through an execution engine with step-level status and logs.
+- [Application and local setup](SWITCHBOARD/README.md)
+- [Backend execution and security](SWITCHBOARD/backend/README.md)
+- [Release configuration and verification](SWITCHBOARD/RELEASE.md)
+- [Safe baseline for the existing production database](SWITCHBOARD/backend/MIGRATIONS.md)
+- [Automated checks](https://github.com/8llo10/SWITCHBOARD-Visual-Automation-Builder/actions/workflows/verify.yml)
 
-Example workflow:
-
-`New Employee → Create User → Condition → Add Group / Install Apps → Send Welcome`
-
-## Planned node types
-
-- HTTP Request
-- PostgreSQL
-- Webhook
-- SSH Action
-- PowerShell
-- Email
-- Approval
-- Condition
-- Delay
-- Create User
-- Disable User
-- Health Check
-
-## Triggers
-
-- Manual run
-- Incoming webhook
-- Scheduled execution
-
-## Stack
-
-- Next.js
-- React Flow
-- Node.js / Express
-- Prisma ORM
-- PostgreSQL
-- Docker
-
-## Project goal
-
-The goal is to provide a practical automation workspace for IT operations rather than a static workflow prototype: workflows are intended to be persisted, executed, and observed through real run logs and step states.
+Production deployment remains gated on verifying the existing database baseline and environment. Do not reset, seed or recreate the production database.

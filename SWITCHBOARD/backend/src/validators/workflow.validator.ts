@@ -26,6 +26,7 @@ export const workflowDefinitionSchema=z.object({nodes:z.array(nodeSchema).min(1)
   const c=node.data?.config||{};
   const issue=(field:string,message:string)=>ctx.addIssue({code:z.ZodIssueCode.custom,path:['nodes',n,'data','config',field],message});
   for(const key of ['password','privateKey','secret','connectionString'])if(c[key])issue(key,'Store secrets in a credential and use credentialRef');
+  if(kind==='email')for(const field of ['to','cc','bcc','subject','text','html'])if(c[field]!==undefined&&typeof c[field]!=='string')issue(field,'Use text or a template reference for this field');
   if(kind==='approval'&&c.timeoutMinutes!==undefined&&(!Number.isFinite(Number(c.timeoutMinutes))||Number(c.timeoutMinutes)<1||Number(c.timeoutMinutes)>10080))issue('timeoutMinutes','Approval deadline must be 1 to 10080 minutes');
   if(['http','health'].includes(kind)&&c.url&&!String(c.url).includes('{{')){try{const url=new URL(c.url);if(!['http:','https:'].includes(url.protocol))issue('url','Use an HTTP or HTTPS URL')}catch{issue('url','Enter a valid URL')}}
   if(kind==='schedule'&&!['minutes','hours','days'].includes(c.unit||'minutes'))issue('unit','Choose minutes, hours, or days');

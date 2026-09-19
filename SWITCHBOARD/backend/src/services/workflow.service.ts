@@ -1,3 +1,4 @@
+import {AppError} from '../utils/AppError.js';
 import {validateCredentials} from './workflow-credentials.service.js';
 import {resolveTriggerConfig} from './trigger-config.js';
 import {workflowDefinitionSchema} from '../validators/workflow.validator.js';
@@ -22,6 +23,6 @@ export const update=(id:string,input:any)=>prisma.$transaction(async tx=>{
  }
  return workflow;
 });
-export const remove=(id:string)=>prisma.workflow.delete({where:{id}});
+export const remove=async(id:string)=>{if(await prisma.workflowRun.count({where:{workflowId:id,status:{in:['QUEUED','RUNNING','WAITING']}}}))throw new AppError('Cancel active or waiting runs before deleting this workflow',409);return prisma.workflow.delete({where:{id}})};
 export const runs=(workflowId:string)=>prisma.workflowRun.findMany({where:{workflowId},orderBy:{createdAt:'desc'},take:50});
 export async function run(workflowId:string,_triggerType:string,payload:any){const workflow=await prisma.workflow.findUniqueOrThrow({where:{id:workflowId},select:{version:true,definition:true,owner:{select:{role:true}}}});const definition=workflowDefinitionSchema.parse(workflow.definition);await validateCredentials(definition,workflowId,workflow.owner||undefined);const entry=definition.nodes.find(n=>n.data.kind==='trigger')||definition.nodes.find(n=>['webhook','schedule'].includes(n.data.kind));return prisma.workflowRun.create({data:{workflowId,status:'QUEUED',triggerType:'manual',triggerPayload:payload||{},context:{workflowVersion:workflow.version,definitionSnapshot:workflow.definition,entryNodeId:entry!.id,runtime:null} as any}})}
