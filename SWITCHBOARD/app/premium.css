@@ -1,0 +1,96 @@
+/* SWITCHBOARD product-wide visual language: premium dark operational UI */
+:root{--sb-bg:#090e18;--sb-surface:#111a29;--sb-raised:#172235;--sb-border:#2b3850;--sb-text:#ecf2ff;--sb-muted:#99aac2;--sb-primary:#8588ff;--sb-success:#6ce3af;--sb-danger:#ff8399}
+body{background:#090e18!important;color:var(--sb-text)!important}
+a,button,input,select,textarea{ -webkit-tap-highlight-color:transparent }
+:focus-visible{outline:2px solid #9da5ff!important;outline-offset:3px}
+.sb-app-shell.product-shell{background:var(--sb-bg)!important;color:var(--sb-text)!important;grid-template-columns:250px minmax(0,1fr);font-family:Inter,system-ui,sans-serif!important}
+.sb-app-shell .product-rail{background:#0e1624!important;border-right:1px solid #253147!important;padding:20px 13px!important}
+.sb-app-shell .rail-brand{min-height:62px;height:auto;margin:0 4px 22px;padding:0 7px 17px;border-bottom:1px solid #283348!important;color:#f4f6ff!important;gap:12px}
+.sb-app-shell .rail-brand-mark{height:40px;width:40px;border-radius:13px;background:linear-gradient(145deg,#626ef8,#9d78f5)!important;box-shadow:0 9px 28px #6466ee38;color:#fff}
+.sb-app-shell .rail-brand-copy b{font-size:13px;letter-spacing:.07em;color:#f2f5ff}
+.sb-app-shell .rail-brand-copy small{font-size:11px;margin-top:3px;color:#8c9bb5}
+.sb-sidebar-label{padding:0 15px 12px;color:#60728e;font-size:10px;font-weight:800;letter-spacing:.16em}
+.sb-app-shell .rail-nav{gap:4px}
+.sb-app-shell .rail-link{height:45px!important;display:flex;gap:13px;align-items:center;border-radius:11px!important;color:#93a5bc!important;padding:0 14px!important;font-size:13px!important;font-weight:550;text-decoration:none;transition:background .15s ease,color .15s}
+.sb-app-shell .rail-link:hover{background:#1c293d!important;color:#e2e8fa!important}
+.sb-app-shell .rail-link.active{background:#292d55!important;color:#e8e8ff!important}
+.sb-app-shell .rail-link.active:before{content:'';height:20px;width:3px;border-radius:99px;background:#8f95ff;position:absolute;left:3px}
+.sb-app-shell .rail-link i{display:none}
+.sb-app-shell .rail-bottom{gap:13px}
+.sb-sidebar-tip{background:linear-gradient(135deg,#262c58,#202a43);border:1px solid #434879;border-radius:15px;padding:15px;color:#eef2ff;text-decoration:none;display:flex;flex-direction:column;gap:9px;margin:8px 3px}
+.sb-sidebar-tip>span{display:flex;align-items:center;gap:7px;color:#b7b7ff;font-size:9px;font-weight:800;letter-spacing:.12em}
+.sb-sidebar-tip b{font-size:13px}.sb-sidebar-tip small{font-size:11px;color:#bac6e4;display:flex;align-items:center;gap:4px}
+.sb-app-shell .rail-user{border-top:1px solid #2b3850;padding-top:16px;gap:11px}
+.sb-app-shell .rail-avatar,.sb-top-avatar{display:grid;place-items:center;width:37px;height:37px;border-radius:12px;background:#394675!important;color:#e8ecff!important;font-weight:800;font-size:13px}
+.sb-app-shell .rail-user-copy b{color:#eaf0ff;font-size:12px}
+.sb-app-shell .rail-user-copy small{color:#8797b0;font-size:11px}
+.sb-app-shell .rail-user button{color:#a6b3c8;border-radius:9px;cursor:pointer}
+.sb-app-shell .rail-collapse{background:transparent!important;color:#8293ad!important;border:0!important;font-size:11px!important;gap:8px;cursor:pointer}
+.sb-app-shell.rail-collapsed{grid-template-columns:78px minmax(0,1fr)!important}
+.sb-app-shell.rail-collapsed .product-rail{align-items:center}
+.sb-app-shell.rail-collapsed .rail-brand{margin:0 0 20px;border-bottom:0}
+.sb-app-shell.rail-collapsed .rail-brand-copy,.sb-app-shell.rail-collapsed .rail-link span,.sb-app-shell.rail-collapsed .rail-user-copy,.sb-app-shell.rail-collapsed .sb-sidebar-label,.sb-app-shell.rail-collapsed .sb-sidebar-tip,.sb-app-shell.rail-collapsed .rail-collapse span{display:none}
+.sb-app-shell.rail-collapsed .rail-link{justify-content:center!important;width:49px;padding:0!important}
+.sb-app-shell.rail-collapsed .rail-user button{display:none}
+.sb-app-shell .product-main{min-width:0;background:radial-gradient(ellipse at 70% -30%,#20234935,transparent 52%),#090e18!important}
+.sb-app-shell .product-topbar{background:#0c1421d9!important;border-bottom:1px solid #27344a!important;min-height:90px!important;height:auto!important;padding:19px clamp(18px,3.5vw,54px)!important;display:flex;align-items:center;justify-content:space-between;gap:20px;backdrop-filter:blur(16px)}
+.sb-app-shell .sb-page-heading p{font-size:10px!important;font-weight:800!important;letter-spacing:.16em!important;color:#898dff!important;margin:0 0 7px!important}
+.sb-app-shell .sb-page-heading h1{font-size:clamp(21px,2.3vw,31px)!important;letter-spacing:-.035em!important;color:#f2f6ff!important;margin:0;font-weight:750!important}
+.sb-app-shell .product-content{max-width:1600px!important;padding:32px clamp(18px,3.5vw,54px) 80px!important;margin:0 auto;width:100%;color:#eaf0ff!important}
+.sb-app-shell .product-content h1,.sb-app-shell .product-content h2,.sb-app-shell .product-content h3,.sb-app-shell .product-content b,.sb-app-shell .product-content strong{color:#eaf0ff}
+.sb-app-shell .product-content p,.sb-app-shell .product-content small{color:#a5b4cb}
+.sb-app-shell .product-content .panel,.sb-app-shell .product-content .table-card,.sb-app-shell .product-content .metric-card,.sb-app-shell .product-content .neo-card{background:#131e2e!important;border:1px solid #2b3a50!important;color:#eaf0ff!important;box-shadow:0 9px 35px #03071026!important;border-radius:17px!important}
+.sb-app-shell .product-content .panel h2,.sb-app-shell .product-content .neo-card h2,.sb-app-shell .product-content .table-card h2{color:#f1f4ff!important}
+.sb-app-shell .product-content .panel{padding:25px}
+.sb-app-shell .product-content .panel-head{border-color:#2b3a50!important}
+.sb-app-shell .product-content .eyebrow{color:#9797ff!important;font-size:10px!important;letter-spacing:.14em}
+.sb-app-shell .product-content .metric-card{padding:22px!important}
+.sb-app-shell .product-content .metric-card strong{color:#f1f5ff!important;font-size:clamp(20px,2vw,30px)!important}
+.sb-app-shell .product-content input,.sb-app-shell .product-content select,.sb-app-shell .product-content textarea{background:#0d1726!important;color:#edf2ff!important;border:1px solid #35455d!important;border-radius:10px!important;min-height:40px;font-size:13px!important;outline:none}
+.sb-app-shell .product-content input::placeholder,.sb-app-shell .product-content textarea::placeholder{color:#71839d}
+.sb-app-shell .product-content input:focus,.sb-app-shell .product-content select:focus,.sb-app-shell .product-content textarea:focus{border-color:#898dff!important;box-shadow:0 0 0 3px #8588ff1f}
+.sb-app-shell .product-content label{color:#b8c7df!important;font-size:12px!important}
+.sb-app-shell .product-content button{transition:filter .14s ease,transform .14s ease}
+.sb-app-shell .product-content button:hover:not(:disabled){filter:brightness(1.12)}
+.sb-app-shell .product-content .primary-btn{background:#7276ee!important;color:#fff!important;border:1px solid #888cff!important;border-radius:10px!important;font-size:12px!important;min-height:40px!important;letter-spacing:0!important}
+.sb-app-shell .product-content .secondary-btn,.sb-app-shell .product-content .ghost-btn{background:#172339!important;color:#d5e0f4!important;border:1px solid #35435b!important;border-radius:10px!important;font-size:12px!important}
+.sb-app-shell .product-content .table-card{overflow:hidden}
+.sb-app-shell .product-content .table-card table{font-size:12px!important;color:#e3eaf8!important}
+.sb-app-shell .product-content .table-card th{background:#182439!important;color:#a3b2c8!important;font-size:11px!important;letter-spacing:.08em}
+.sb-app-shell .product-content .table-card td{border-color:#2d3a50!important;color:#dce6f8!important;font-size:12px!important}
+.sb-app-shell .product-content .table-card tr:hover{background:#1a2940!important}
+.sb-app-shell .product-content .badge{border-radius:999px!important;font-size:10px!important;padding:6px 10px!important}
+.sb-app-shell .product-content .empty-state{border:1px dashed #40516d;border-radius:17px;background:#121d2e;padding:48px 18px;color:#b4c1d7}
+.sb-app-shell .product-content .empty-state h3{font-size:18px}
+.sb-app-shell .product-content .empty-state p{font-size:13px;max-width:420px;margin:10px auto 0;line-height:1.6}
+.sb-app-shell .product-content .loading-panel{background:#151f31;color:#cbd6e9;border-radius:15px;padding:32px}
+.sb-app-shell .product-content .error-panel{background:#421e33!important;border:1px solid #873854!important;color:#ffc4d0!important;border-radius:12px!important;padding:15px!important;font-size:13px!important}
+.sb-app-shell .product-content .error-panel *{color:inherit!important}
+.sb-app-shell .product-content .automation-hero{background:linear-gradient(130deg,#24234d,#131d2e)!important;border:1px solid #393f67!important;border-radius:19px!important;padding:30px!important;box-shadow:none!important}
+.sb-app-shell .product-content .automation-hero h2{font-size:clamp(23px,2.4vw,34px)!important;color:#f7f7ff!important;line-height:1.2}
+.sb-app-shell .product-content .automation-hero p{font-size:13px!important;line-height:1.65;color:#b3c1d8!important}
+.sb-app-shell .product-content .automation-panel,.sb-app-shell .product-content .trigger-card{background:#141f30!important;border:1px solid #2c3a51!important;border-radius:17px!important;min-height:unset!important;color:#eaf0ff!important}
+.sb-app-shell .product-content .automation-panel-head{background:#172438!important;border-color:#304059!important;height:70px}
+.sb-app-shell .product-content .automation-panel-head h3,.sb-app-shell .product-content .trigger-card h2{color:#eef3ff!important;font-size:17px!important}
+.sb-app-shell .product-content .automation-panel-head small,.sb-app-shell .product-content .trigger-card small{font-size:10px!important;color:#a4b2c8!important}
+.sb-app-shell .product-content .credential-list .credential-row,.sb-app-shell .product-content .trigger-row{background:#121d2d!important;border-color:#2a394f!important;color:#eaf0ff!important}
+.sb-app-shell .product-content .credential-list .credential-row b,.sb-app-shell .product-content .trigger-row b{color:#eaf0ff!important;font-size:13px!important}
+.sb-app-shell .product-content .credential-list .credential-row small,.sb-app-shell .product-content .trigger-row small{font-size:11px!important;color:#a0aec4!important}
+.sb-app-shell .product-content .role-grid>div{background:#19243a!important;border:1px solid #35425b!important;color:#eaf0ff!important;border-radius:12px!important}
+.sb-app-shell .product-content .role-grid p{color:#9fb0c5!important;font-size:12px!important}
+.sb-app-shell .product-content .architecture-strip{border-color:#304059!important;background:#151e30!important}
+.sb-app-shell .product-content .architecture-strip div{background:#1b283d!important;color:#f2f5ff!important;border-color:#33455b!important}
+.sb-app-shell .product-content .architecture-strip small{font-size:11px!important}
+.sb-app-shell .product-content .settings-list>div{border-color:#2d3b50!important;color:#e4ecfa!important}
+.sb-app-shell .product-content .settings-list code,.sb-app-shell .product-content .inline-code{color:#aeb5ff!important;background:#1b2540!important;border-radius:7px;padding:5px!important;white-space:normal;overflow-wrap:anywhere}
+.sb-app-shell .product-content .run-detail-hero,.sb-app-shell .product-content .run-summary-grid>div,.sb-app-shell .product-content .run-progress-card,.sb-app-shell .product-content .run-detail-card{background:#141f30!important;border-color:#2c3a51!important;color:#eaf0ff!important}
+.sb-app-shell .product-content .run-detail-hero h2,.sb-app-shell .product-content .run-summary-grid b,.sb-app-shell .product-content .run-step b,.sb-app-shell .product-content .run-log b{color:#eef3ff!important}
+.sb-app-shell .product-content .run-step,.sb-app-shell .product-content .run-log{border-color:#2c3a51!important}
+.sb-app-shell .product-content .run-progress-track{background:#2b3750!important}
+.sb-app-shell .product-content .run-detail-card header{border-color:#2c3a51!important}
+.sb-app-shell .product-content .run-detail-actions button{background:#19253a!important;color:#e0e9f9!important;border-color:#35455d!important;font-size:11px!important}
+.sb-app-shell .product-content .run-step-index{background:#26364c!important;border-color:#35475f!important}
+.sb-loading-screen{min-height:100vh;background:#0b1220;display:flex;align-items:center;justify-content:center;gap:15px;color:#dce4f4;font-family:Inter,sans-serif}.sb-loader{width:21px;height:21px;border:2px solid #3d476c;border-top-color:#9da5ff;border-radius:50%;animation:sb-spin .8s linear infinite}@keyframes sb-spin{to{transform:rotate(360deg)}}
+@media(max-width:1000px){.sb-app-shell.product-shell{grid-template-columns:78px minmax(0,1fr)}.sb-app-shell .rail-brand-copy,.sb-app-shell .rail-link span,.sb-app-shell .rail-user-copy,.sb-app-shell .rail-collapse span,.sb-app-shell .sb-sidebar-label,.sb-app-shell .sb-sidebar-tip{display:none}.sb-app-shell .rail-link{justify-content:center;width:50px;padding:0!important}.sb-app-shell .product-rail{align-items:center}.sb-app-shell .rail-brand{margin:0 0 25px!important}.sb-app-shell .rail-user button{display:none}}
+@media(max-width:650px){.sb-app-shell.product-shell,.sb-app-shell.rail-collapsed{display:block!important}.sb-app-shell .product-rail{position:fixed;top:auto;left:0;right:0;bottom:0;width:100%;height:65px!important;padding:7px 9px!important;border-right:0!important;border-top:1px solid #2b3a50!important;z-index:999}.sb-app-shell .rail-brand,.sb-app-shell .rail-bottom,.sb-app-shell .sb-sidebar-label{display:none!important}.sb-app-shell .rail-nav{display:flex!important;flex-direction:row!important;overflow-x:auto;overflow-y:hidden;align-items:center;height:100%;justify-content:flex-start;gap:3px;width:100%;scrollbar-width:none}.sb-app-shell .rail-nav .rail-link{display:grid!important;place-items:center;flex:0 0 47px;width:47px;height:47px!important;padding:0!important}.sb-app-shell .product-main{padding-bottom:72px}.sb-app-shell .product-topbar{min-height:75px!important;padding:14px 19px!important}.sb-app-shell .product-content{padding:20px 15px 42px!important}.sb-top-avatar{display:none}.sb-app-shell .product-content .automation-hero{padding:21px!important}.sb-app-shell .product-content .panel{padding:18px}.sb-app-shell .product-content .run-detail-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
