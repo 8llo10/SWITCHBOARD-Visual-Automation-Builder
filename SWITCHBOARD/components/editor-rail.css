@@ -26,3 +26,19 @@
 .workflow-actions-pop{background:#1d2941!important;border:1px solid #3c4c66!important;border-radius:10px!important;color:#e8efff!important}
 .workflow-actions-pop button{color:#d2ddef!important;font-size:11px!important}
 @media(max-width:750px){.editor-rail{width:56px!important}.editor-rail-brand,.editor-rail-live{width:56px!important}.editor-rail~.n8n-shell{left:56px!important}.editor-rail nav a,.editor-rail nav button{width:42px!important;height:43px!important}.workflow-switcher{left:60px!important;top:6px!important;bottom:6px!important;width:min(340px,calc(100vw - 70px))!important}}
+
+.sb-editor-modal-backdrop{position:fixed;inset:0;background:#050913d9;z-index:1600;display:grid;place-items:center;padding:22px;backdrop-filter:blur(8px)}
+.sb-editor-modal{width:min(100%,450px);background:#172339;color:#eff3ff;border:1px solid #435270;border-radius:20px;box-shadow:0 35px 90px #0009;padding:30px;font-family:Inter,system-ui,sans-serif}
+.sb-editor-modal-head{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.sb-editor-modal h2{font-size:23px;margin:0;letter-spacing:-.04em}
+.sb-editor-modal-head button{border:0;background:transparent;color:#afbdd0;font-size:25px;cursor:pointer}
+.sb-editor-modal p{font-size:13px;color:#a3b3ca;line-height:1.6}
+.sb-editor-modal label{display:block;color:#d7e1ee;font-size:12px;font-weight:750;margin:20px 0 8px}
+.sb-editor-modal input,.sb-editor-modal textarea{display:block;width:100%;min-height:44px;border:1px solid #3a4a62;border-radius:10px;padding:12px;background:#0e192b;color:#eff4ff;font-family:Inter,system-ui,sans-serif;font-size:13px;resize:vertical;outline:0}
+.sb-editor-modal input:focus,.sb-editor-modal textarea:focus{border-color:#9da0ff;box-shadow:0 0 0 3px #888bfd23}
+.sb-editor-modal textarea{min-height:85px}
+.sb-editor-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:26px}
+.sb-editor-modal-actions button{border:1px solid #40516c;border-radius:10px;padding:11px 16px;background:#202f48;color:#e0e9f8;font-size:12px;font-weight:700;cursor:pointer}
+.sb-editor-modal-actions button[type=submit]{background:#757af4;color:#fff;border-color:#9999ff}
+.sb-editor-modal-actions button:disabled{opacity:.55;cursor:wait}
+.sb-editor-modal .sb-edit-error{background:#492338;color:#ffc9d5;border-radius:9px;padding:10px;border:1px solid #8a4a62}
