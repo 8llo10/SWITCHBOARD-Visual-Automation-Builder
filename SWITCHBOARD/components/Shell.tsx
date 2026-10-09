@@ -6,15 +6,15 @@ import {Activity,ArrowUpRight,ChartNoAxesCombined,ChevronLeft,ChevronRight,KeyRo
 import {getSession,logoutSession} from '../lib/switchboard';
 
 const sections=[
-  {href:'/dashboard',label:'Overview',icon:ChartNoAxesCombined},
-  {href:'/workflows',label:'Workflows',icon:Workflow},
-  {href:'/runs',label:'Executions',icon:Activity},
-  {href:'/triggers',label:'Triggers',icon:Zap},
-  {href:'/credentials',label:'Credentials',icon:KeyRound},
-  {href:'/directory',label:'Directory',icon:Users},
-  {href:'/audit',label:'Audit logs',icon:ScrollText},
-  {href:'/users',label:'Team & roles',icon:ShieldCheck},
-  {href:'/settings',label:'System status',icon:Settings},
+  {href:'/dashboard',label:'Overview',icon:ChartNoAxesCombined,roles:['ADMIN','OPERATOR','VIEWER']},
+  {href:'/workflows',label:'Workflows',icon:Workflow,roles:['ADMIN','OPERATOR','VIEWER']},
+  {href:'/runs',label:'Executions',icon:Activity,roles:['ADMIN','OPERATOR','VIEWER']},
+  {href:'/triggers',label:'Triggers',icon:Zap,roles:['ADMIN','OPERATOR','VIEWER']},
+  {href:'/credentials',label:'Credentials',icon:KeyRound,roles:['ADMIN','OPERATOR']},
+  {href:'/directory',label:'Directory',icon:Users,roles:['ADMIN','OPERATOR']},
+  {href:'/audit',label:'Audit logs',icon:ScrollText,roles:['ADMIN']},
+  {href:'/users',label:'Team & roles',icon:ShieldCheck,roles:['ADMIN']},
+  {href:'/settings',label:'System status',icon:Settings,roles:['ADMIN','OPERATOR','VIEWER']},
 ];
 
 export function Shell({children,title,eyebrow,actions}:{children:React.ReactNode;title:string;eyebrow?:string;actions?:React.ReactNode}){
@@ -29,7 +29,7 @@ export function Shell({children,title,eyebrow,actions}:{children:React.ReactNode
   <aside className="product-rail" aria-label="Workspace navigation">
    <Link href="/workflows" className="rail-brand" aria-label="Switchboard workflows"><span className="rail-brand-mark"><Network size={20}/></span><span className="rail-brand-copy"><b>SWITCHBOARD</b><small>Automation workspace</small></span></Link>
    <div className="sb-sidebar-label">WORKSPACE</div>
-   <nav className="rail-nav" aria-label="Main navigation">{sections.map(({href,label,icon:Icon})=>{const active=path===href||path.startsWith(href+'/');return <Link key={href} href={href} title={label} aria-current={active?'page':undefined} className={`rail-link ${active?'active':''}`}><Icon size={19} strokeWidth={1.8}/><span>{label}</span>{active&&<i/>}</Link>})}</nav>
+   <nav className="rail-nav" aria-label="Main navigation">{sections.filter(section=>section.roles.includes(String((session.user as any)?.role||'VIEWER'))).map(({href,label,icon:Icon})=>{const active=path===href||path.startsWith(href+'/');return <Link key={href} href={href} title={label} aria-current={active?'page':undefined} className={`rail-link ${active?'active':''}`}><Icon size={19} strokeWidth={1.8}/><span>{label}</span>{active&&<i/>}</Link>})}</nav>
    <div className="rail-bottom">
     <Link href="/workflows" className="sb-sidebar-tip"><span><Zap size={15}/> QUICK ACCESS</span><b>Build an automation</b><small>Open your visual workflow editor <ArrowUpRight size={12}/></small></Link>
     <div className="rail-user"><span className="rail-avatar">{username.slice(0,1).toUpperCase()}</span><span className="rail-user-copy"><b>{username}</b><small>{String((session.user as any)?.role||'Operator')}</small></span><button type="button" onClick={()=>void logout()} title="Sign out" aria-label="Sign out"><LogOut size={17}/></button></div>
