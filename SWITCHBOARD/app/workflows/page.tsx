@@ -32,6 +32,7 @@ export default function WorkflowsPage(){
   finally{setLoading(false)}
  },[]);
  useEffect(()=>{const session=getSession();if(!session){router.replace('/login');return}setUserName(String((session.user as any)?.name||'Operator'));void load()},[router,load]);
+ useEffect(()=>{if(new URLSearchParams(window.location.search).has('create')){setModal(true);window.history.replaceState(null,'','/workflows')}},[]);
  useEffect(()=>{if(!modal)return;function close(e:KeyboardEvent){if(e.key==='Escape')setModal(false)}window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[modal]);
  const filtered=useMemo(()=>workflows.filter(w=>(filter==='ALL'||w.status===filter)&&(w.name+' '+(w.description||'')).toLowerCase().includes(query.toLowerCase())),[workflows,filter,query]);
  const active=workflows.filter(w=>w.status==='ACTIVE').length;
