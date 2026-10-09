@@ -1,2 +1,14 @@
-import {redirect} from 'next/navigation';
-export default function RunsPage(){redirect('/workflows')}
+'use client';
+import {useCallback,useEffect,useMemo,useState} from 'react';
+import Link from 'next/link';
+import {ArrowLeft,Activity,Search,RefreshCw} from 'lucide-react';
+import {sb,getSession} from '../../lib/switchboard';
+import '../workflows/workflows.css';
+type Run={id:string;status:string;workflowId:string;workflow?:{name:string};triggerType?:string;createdAt:string};
+export default function RunsPage(){
+ const [runs,setRuns]=useState<Run[]>([]),[busy,setBusy]=useState(true),[error,setError]=useState(''),[query,setQuery]=useState('');
+ const refresh=useCallback(async()=>{setBusy(true);try{const data=await sb<Run[]>('/runs');setRuns(Array.isArray(data)?data:[]);setError('')}catch(e:any){setError(e?.message||'Unable to load runs')}finally{setBusy(false)}},[]);
+ useEffect(()=>{if(!getSession()){window.location.replace('/login');return}void refresh()},[refresh]);
+ const filtered=useMemo(()=>runs.filter(r=>((r.workflow?.name||r.workflowId)+' '+r.status+' '+r.triggerType).toLowerCase().includes(query.toLowerCase())),[runs,query]);
+ return <main className="wf-home"><header className="wf-header"><Link className="wf-brand" href="/workflows">SWITCHBOARD</Link><Link className="wf-btn" href="/workflows"><ArrowLeft size={16}/> Workflows</Link></header><div className="wf-intro"><div><p className="wf-kicker">Execution history</p><h1>Workflow runs</h1><p>Review execution status, investigate failures, and inspect individual runs.</p></div><button className="wf-btn" onClick={()=>void refresh()} disabled={busy}><RefreshCw size={16}/> Refresh</button></div><div className="wf-section-head"><h2>{busy?'Loading runs…':runs.length+' recent runs'}</h2><label className="wf-search"><Search size={16}/><input aria-label="Search runs" placeholder="Find a run..." value={query} onChange={e=>setQuery(e.target.value)}/></label></div>{error&&<div className="wf-alert" role="alert">{error}</div>}{!busy&&!filtered.length?<div className="wf-empty"><Activity size={35}/><h3>No runs found</h3><p>Executions will appear here when you run a workflow.</p><Link className="wf-btn wf-btn-primary" href="/workflows">Explore workflows</Link></div>:<div className="wf-grid">{filtered.map(r=><Link key={r.id} className="wf-tile" href={'/runs/'+r.id}><div className="wf-tile-top"><span className="wf-tile-icon"><Activity size={21}/></span><span className={'wf-status '+(r.status==='SUCCEEDED'?'active':'')}>{r.status}</span></div><h3>{r.workflow?.name||'Workflow execution'}</h3><p>{r.triggerType||'Manual'} trigger · {new Date(r.createdAt).toLocaleString()}</p><div className="wf-tile-bottom"><span>{r.id.slice(0,12)}…</span><span>View details →</span></div></Link>)}</div>}</main>;
+}
