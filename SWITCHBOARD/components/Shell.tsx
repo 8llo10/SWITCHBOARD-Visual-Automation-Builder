@@ -23,7 +23,7 @@ export function Shell({children,title,eyebrow,actions}:{children:React.ReactNode
  const [collapsed,setCollapsed]=useState(false);
  useEffect(()=>{const current=getSession();if(!current){router.replace('/login');return}setSessionState(current)},[router]);
  const logout=async()=>{await logoutSession();router.replace('/login')};
- if(session===undefined)return <div className="sb-loading-screen" role="status"><span className="sb-loader"/><strong>Preparing your workspace</strong></div>;
+ if(!session)return <div className="sb-loading-screen" role="status"><span className="sb-loader"/><strong>Preparing your workspace</strong></div>;
  const username=String((session.user as any)?.name||'Operator');
  return <div className={`product-shell sb-app-shell ${collapsed?'rail-collapsed':''}`}>
   <aside className="product-rail" aria-label="Workspace navigation">
