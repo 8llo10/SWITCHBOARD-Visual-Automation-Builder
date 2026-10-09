@@ -1,0 +1,36 @@
+/* Authentication + landing experience */
+.sb-auth.terminal-auth{background:radial-gradient(ellipse at 16% 5%,#29325d70,transparent 42%),radial-gradient(ellipse at 100% 85%,#29234e72,transparent 45%),#0b101d!important;color:#e9effb!important;padding:85px 45px 60px!important;display:flex!important;align-items:center;justify-content:center}
+.sb-auth .terminal-back{top:26px!important;left:35px!important;font-family:Inter,system-ui,sans-serif!important;color:#a7b6ce!important;font-size:12px!important;letter-spacing:0!important;gap:8px!important;text-decoration:none}
+.sb-auth .terminal-auth-wrap{max-width:1180px;width:100%;grid-template-columns:minmax(0,1.2fr) minmax(360px,.8fr)!important;gap:clamp(32px,6vw,110px)!important}
+.sb-auth .terminal-mark{display:flex;align-items:center;gap:13px;color:#eaf0ff!important;font-size:14px!important;font-weight:800!important;letter-spacing:.08em!important;text-decoration:none;margin-bottom:50px!important}
+.sb-auth-logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#636bf1,#9882f8);color:#fff!important;box-shadow:0 13px 30px #5156dd41}
+.sb-auth .terminal-mark svg{color:inherit!important}
+.sb-auth .terminal-auth-copy>small{font-size:11px!important;letter-spacing:.17em!important;font-weight:800!important;color:#aaa8ff!important}
+.sb-auth .terminal-auth-copy h1{font-family:Inter,system-ui,sans-serif;font-size:clamp(38px,5vw,69px)!important;line-height:1.08!important;letter-spacing:-.058em!important;margin:20px 0 25px!important;max-width:670px;color:#f2f5ff!important}
+.sb-auth .terminal-auth-copy h1 em{color:#9b9cfe!important;font-style:normal!important}
+.sb-auth .terminal-auth-copy p{font-family:Inter,system-ui,sans-serif;font-size:15px!important;line-height:1.8!important;color:#a4b3c9!important;max-width:520px}
+.sb-auth .terminal-lines{margin-top:42px!important;gap:15px!important;font-family:Inter,system-ui,sans-serif!important;letter-spacing:0!important}
+.sb-auth .terminal-lines span{display:flex;align-items:center;gap:11px;color:#bcc9e0!important;font-size:13px!important}
+.sb-auth .terminal-lines svg{color:#83d8ac}
+.sb-auth .terminal-form{padding:35px!important;border:1px solid #394762!important;background:#161f30!important;box-shadow:0 20px 65px #0005!important;border-radius:21px!important;font-family:Inter,system-ui,sans-serif}
+.sb-auth .terminal-form:before,.sb-auth .terminal-form:after{display:none!important}
+.sb-auth .terminal-form header{display:flex;align-items:center;justify-content:space-between;font-family:Inter,system-ui,sans-serif!important;color:#abaaff!important;font-size:11px!important;font-weight:800;letter-spacing:.15em!important;margin-bottom:18px!important}
+.sb-auth .terminal-form header svg{color:#a8b0ff}
+.sb-auth .terminal-form h2{font-size:27px!important;letter-spacing:-.04em;color:#f1f5ff;margin:0 0 8px}
+.sb-auth .sb-form-subtitle{color:#a0b0c8;font-size:13px!important;line-height:1.65!important;margin:0 0 28px}
+.sb-auth .terminal-form label{display:block;color:#c6d2e4!important;font-size:12px!important;letter-spacing:0!important;font-weight:650;margin:18px 0 8px!important}
+.sb-auth .terminal-form input{min-height:47px!important;display:block;width:100%;margin:0!important;border:1px solid #3c4b64!important;background:#0d1727!important;color:#f4f7ff!important;border-radius:11px!important;padding:0 14px!important;font-family:Inter,system-ui,sans-serif!important;font-size:13px!important}
+.sb-auth .terminal-form input:focus{border-color:#9499ff!important;box-shadow:0 0 0 3px #8088ff26!important}
+.sb-auth .terminal-form input::placeholder{color:#74869f}
+.sb-password-field{position:relative}
+.sb-password-field input{padding-right:50px!important}
+.sb-password-field button{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#a6b6cb;display:grid;place-items:center;width:35px;height:35px;cursor:pointer}
+.sb-password-field button:hover{color:#f2f5ff}
+.sb-auth .terminal-submit{font-family:Inter,system-ui,sans-serif!important;background:#7479fa!important;border:1px solid #9899ff!important;color:#fff!important;font-size:13px!important;font-weight:750!important;letter-spacing:0!important;min-height:49px!important;border-radius:11px!important;margin-top:26px!important;gap:10px;box-shadow:0 10px 30px #595eee40}
+.sb-auth .terminal-submit:hover{background:#8b8ffe!important}
+.sb-auth .terminal-form>small{font-family:Inter,system-ui,sans-serif!important;font-size:12px!important;color:#9eafc7!important;letter-spacing:0!important;margin-top:23px!important}
+.sb-auth .terminal-form>small a{color:#acaeff!important;font-weight:700}
+.sb-auth .terminal-error{padding:13px;border-radius:10px;color:#ffcad3!important;background:#431f32!important;border:1px solid #8d405a!important;font-size:12px!important;line-height:1.5}
+.sb-password-help{margin:8px 0!important;color:#95a4bb!important;font-size:11px!important;line-height:1.5}
+@media(max-width:900px){.sb-auth.terminal-auth{padding:85px 22px 40px!important}.sb-auth .terminal-auth-wrap{grid-template-columns:1fr!important;gap:35px!important;max-width:520px!important}.sb-auth .terminal-mark{margin-bottom:25px!important}.sb-auth .terminal-auth-copy h1{font-size:42px!important}.sb-auth .terminal-auth-copy p{font-size:13px!important}.sb-auth .terminal-lines{margin-top:25px!important}.sb-auth .terminal-form{padding:26px!important}}
+@media(max-width:520px){.sb-auth .terminal-auth-copy h1{font-size:34px!important}.sb-auth .terminal-lines{display:none}.sb-auth .terminal-form{padding:24px 19px!important}.sb-auth .terminal-back{left:22px!important}}
