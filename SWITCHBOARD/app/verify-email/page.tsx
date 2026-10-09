@@ -41,11 +41,11 @@ function VerifyEmailContent(){
     }
   }
 
-  return <main className="terminal-auth"><div className="verify-wrap"><div className="terminal-mark"><Network size={18}/><span>SWITCHBOARD</span></div><div className={`verify-orb ${state}`}>{state==='verified'?<CheckCircle2 size={30}/>:state==='error'?<XCircle size={30}/>:<Mail size={30}/>}</div><small>IDENTITY VERIFICATION</small><h1>{state==='verified'?'Access granted.':state==='error'?'Verification failed.':'Verify your email.'}</h1><p>{message}</p>{email&&<code>{email}</code>}<div className="verify-actions">{state!=='verified'&&email&&<button className="terminal-submit" onClick={resend} disabled={busy}><RefreshCw size={13} className={busy?'spin':''}/>{busy?'SENDING…':'RESEND VERIFICATION'}</button>}<Link href="/login" className="ghost-btn">BACK TO SIGN IN</Link></div></div></main>;
+  return <main className="terminal-auth sb-verify"><div className="verify-wrap"><div className="terminal-mark"><Network size={18}/><span>SWITCHBOARD</span></div><div className={`verify-orb ${state}`}>{state==='verified'?<CheckCircle2 size={30}/>:state==='error'?<XCircle size={30}/>:<Mail size={30}/>}</div><small>IDENTITY VERIFICATION</small><h1>{state==='verified'?'Access granted.':state==='error'?'Verification failed.':'Verify your email.'}</h1><p>{message}</p>{email&&<code>{email}</code>}<div className="verify-actions">{state!=='verified'&&email&&<button className="terminal-submit" onClick={resend} disabled={busy}><RefreshCw size={13} className={busy?'spin':''}/>{busy?'SENDING…':'RESEND VERIFICATION'}</button>}<Link href="/login" className="ghost-btn">BACK TO SIGN IN</Link></div></div></main>;
 }
 
 function VerifyLoading(){
-  return <main className="terminal-auth"><div className="verify-wrap"><div className="terminal-mark"><Network size={18}/><span>SWITCHBOARD</span></div><div className="verify-orb working"><Mail size={30}/></div><small>IDENTITY VERIFICATION</small><h1>Preparing verification…</h1><p>Loading secure verification context.</p></div></main>;
+  return <main className="terminal-auth sb-verify"><div className="verify-wrap"><div className="terminal-mark"><Network size={18}/><span>SWITCHBOARD</span></div><div className="verify-orb working"><Mail size={30}/></div><small>IDENTITY VERIFICATION</small><h1>Preparing verification…</h1><p>Loading secure verification context.</p></div></main>;
 }
 
 export default function VerifyEmail(){
