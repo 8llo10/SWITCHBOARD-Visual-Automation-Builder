@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import * as controller from '../controllers/auth.controller.js';
 
 const router=Router();
+router.get('/config',controller.config);
 router.post('/login',controller.login);
 router.post('/register',controller.register);
 router.post('/verify-email',controller.verifyEmail);
