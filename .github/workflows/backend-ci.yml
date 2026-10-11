@@ -38,3 +38,23 @@ jobs:
         run: npm test
       - name: Build production Docker image
         run: docker build --pull -t switchboard-backend:ci .
+
+      - name: Smoke test container liveness without a database
+        shell: bash
+        run: |
+          set -euo pipefail
+          key="$(openssl rand -hex 32)"
+          docker run -d --name sb-smoke -p 127.0.0.1:14000:4000 \
+            -e PORT=4000 \
+            -e DATABASE_URL=postgresql://ci@127.0.0.1:5432/ci \
+            -e CREDENTIAL_ENCRYPTION_KEY="$key" \
+            switchboard-backend:ci
+          trap 'docker logs --tail=45 sb-smoke || true; docker rm -f sb-smoke >/dev/null 2>&1 || true' EXIT
+          for n in {1..20}; do
+            if curl -fsS --max-time 2 http://127.0.0.1:14000/health > /tmp/sb-health.json; then break; fi
+            sleep 1
+          done
+          cat /tmp/sb-health.json
+          test "$(curl -s --max-time 4 -o /tmp/sb-ready.json -w '%{http_code}' http://127.0.0.1:14000/health/ready)" = '503'
+          test "$(curl -s --max-time 4 -o /tmp/sb-api.json -w '%{http_code}' http://127.0.0.1:14000/api/workflows)" = '503'
+          grep -q 'SERVICE_NOT_READY' /tmp/sb-api.json
