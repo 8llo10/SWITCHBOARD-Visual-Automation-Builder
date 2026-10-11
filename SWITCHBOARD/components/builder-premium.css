@@ -72,3 +72,11 @@
 @media(max-width:1050px){.n8n-status{display:none!important}.n8n-top{gap:6px!important;padding:0 13px!important}.n8n-title{max-width:160px}.n8n-btn{padding:8px!important}.n8n-top .editor-history-actions{display:none}}
 @media(max-width:750px){.n8n-top{height:auto!important;min-height:69px!important;gap:5px!important}.n8n-shell{grid-template-rows:69px 1fr!important}.n8n-title{max-width:115px}.n8n-title b{font-size:12px!important}.n8n-top>.n8n-node-icon{display:none}.n8n-top .n8n-btn{font-size:0!important;padding:9px!important;gap:0!important}.n8n-top .n8n-btn svg{width:18px;height:18px}.n8n-fab{bottom:90px!important}.n8n-inspector,.n8n-add-panel{width:min(100%,370px)!important;max-width:100%!important}.n8n-canvas .react-flow__minimap{display:none}}
 @media(prefers-reduced-motion:reduce){.n8n-node,.n8n-fab{transition:none!important;animation:none!important}}
+
+/* Node discovery */
+.sb-node-categories{display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#556483 transparent;padding:10px 18px 7px;flex:0 0 auto}
+.sb-node-categories button{flex:0 0 auto;min-height:29px;border:1px solid #3c4c64;border-radius:100px;background:#17243a;color:#9eb1ce;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer}
+.sb-node-categories button:hover{border-color:#8d91ff;color:#edf1ff}
+.sb-node-categories button.active{background:#343a70;border-color:#8d91ff;color:#e3e5ff}
+.sb-nodes-count{padding:8px 19px;color:#7d8eac;font-size:9px;font-weight:850;letter-spacing:.15em}
+.sb-node-no-results{padding:22px 10px;text-align:center;color:#9aabc3;font-size:12px;line-height:1.55}
