@@ -3,6 +3,8 @@ import {loginSchema,registerSchema,resendVerificationSchema,verifyEmailSchema} f
 import * as authService from '../services/auth.service.js';
 import * as verificationService from '../services/email-verification.service.js';
 
+export function config(_req:Request,res:Response){return res.json({registrationEnabled:verificationService.isEmailDeliveryConfigured(),emailVerificationRequired:true})}
+
 export async function login(req:Request,res:Response){
   const input=loginSchema.parse(req.body);
   const result=await authService.login(input.email,input.password);
