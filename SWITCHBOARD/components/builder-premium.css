@@ -80,3 +80,9 @@
 .sb-node-categories button.active{background:#343a70;border-color:#8d91ff;color:#e3e5ff}
 .sb-nodes-count{padding:8px 19px;color:#7d8eac;font-size:9px;font-weight:850;letter-spacing:.15em}
 .sb-node-no-results{padding:22px 10px;text-align:center;color:#9aabc3;font-size:12px;line-height:1.55}
+
+.sb-payload-preset-head{display:flex;align-items:center;gap:8px;color:#afb4ff;font-size:10px;font-weight:850;letter-spacing:.13em;margin:25px 0 11px}
+.sb-payload-presets{display:flex;gap:8px;flex-wrap:wrap}
+.sb-payload-presets button{font:700 11px Inter,system-ui,sans-serif;color:#d3dcf2;background:#253452;border:1px solid #465575;border-radius:9px;padding:9px 11px;cursor:pointer}
+.sb-payload-presets button:hover{background:#343e76;border-color:#8b92ff;color:#fff}
+.sb-preset-note{font-size:11px!important;line-height:1.55!important;color:#8598b3!important;margin:11px 0 20px!important}
