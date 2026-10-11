@@ -51,3 +51,23 @@
 .sb-verify .terminal-submit{width:auto!important;background:#767af5!important;border:1px solid #999bff!important;color:#fff!important;margin:0!important}
 .sb-verify .ghost-btn{background:#1d2a41!important;border:1px solid #44526b!important;color:#e4ebf8!important}
 @media(max-width:600px){.sb-verify.terminal-auth{padding:18px!important}.sb-verify .verify-wrap{padding:32px 20px!important}}
+
+/* Auth states: actionable and accessible */
+.sb-auth .terminal-form .terminal-error{text-align:left;font-size:12px!important;line-height:1.6!important;margin:18px 0!important;padding:13px 15px!important;border-radius:11px!important}
+.sb-auth .terminal-error b{display:block;color:#ffe0e8;font-size:13px;margin-bottom:5px}
+.sb-auth .terminal-error p{color:#ffc3d3;font-size:12px;line-height:1.6;margin:5px 0 0}
+.sb-auth-retry{display:inline-flex;align-items:center;gap:8px;margin-top:12px;color:#fff;background:#674359;border:1px solid #aa7288;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:700;cursor:pointer}
+.sb-auth-retry:hover{background:#815267}
+.sb-auth .sb-auth-info{display:flex;align-items:center;gap:9px;border:1px solid #475378;background:#283353;color:#bcc8ea;border-radius:10px;padding:12px;font-size:12px;line-height:1.5;margin:16px 0}
+.sb-auth-password-icon{position:absolute;right:17px;top:50%;transform:translateY(-50%);color:#8398b1;pointer-events:none}
+.sb-auth .terminal-form .sb-password-mismatch{color:#ffb5c3!important;font-size:11px!important;margin:8px 0!important}
+.sb-auth .terminal-form .sb-password-help{font-size:11px!important;line-height:1.6!important;color:#a3b1c8!important;margin:9px 0 0!important}
+.sb-auth .terminal-submit:disabled{opacity:.55!important;cursor:not-allowed!important;box-shadow:none!important}
+.sb-verify .verify-actions .terminal-submit:disabled{opacity:.55;cursor:not-allowed}
+.sb-verify .terminal-error{font-size:12px!important;color:#ffbace!important;margin:15px 0;padding:12px;border:1px solid #86425a;border-radius:10px;background:#431f31}
+.sb-verify .sb-verification-hint{font-size:11px!important;margin-top:20px!important}
+.sb-auth-recovery.sb-loading-screen{flex-direction:column;text-align:center;padding:30px}
+.sb-auth-recovery strong{font-size:21px;color:#f0f4ff}
+.sb-auth-recovery p{max-width:500px;color:#a3b5cf;font-size:13px;line-height:1.7}
+.sb-auth-recovery button{min-width:145px;border:1px solid #6676bc;background:#333b76;color:#f2f4ff;padding:11px 16px;border-radius:10px;font-weight:700;cursor:pointer}
+.sb-auth-recovery button+button{background:#1c2940;border-color:#41516b}
