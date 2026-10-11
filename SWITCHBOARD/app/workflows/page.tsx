@@ -3,7 +3,7 @@ import {FormEvent,useCallback,useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import Link from 'next/link';
 import {Activity,ArrowRight,CheckCircle2,Clock3,GitBranch,LayoutDashboard,LogOut,Plus,Search,Sparkles,Workflow,X,Zap} from 'lucide-react';
-import {getSession,logoutSession,sb} from '../../lib/switchboard';
+import {getSession,logoutSession,restoreSession,sb} from '../../lib/switchboard';
 import './workflows.css';
 import {Shell} from '../../components/Shell';
 import {starterTemplates,createTemplateDefinition,type TemplateId} from '../../lib/workflow-templates';
@@ -35,8 +35,7 @@ export default function WorkflowsPage(){
   }catch(e:any){setError(e?.message||'Could not load workflows. Please retry.')}
   finally{setLoading(false)}
  },[]);
- useEffect(()=>{const session=getSession();if(!session){router.replace('/login');return}setUserName(String((session.user as any)?.name||'Operator'));setCanEdit(['ADMIN','OPERATOR'].includes(String((session.user as any)?.role||'')));void load()},[router,load]);
- useEffect(()=>{if(new URLSearchParams(window.location.search).has('create')&&['ADMIN','OPERATOR'].includes(String((getSession()?.user as any)?.role||''))){setModal(true);window.history.replaceState(null,'','/workflows')}},[]);
+ useEffect(()=>{let alive=true;restoreSession().then(session=>{if(!alive)return;if(!session){router.replace('/login');return}setUserName(String(session.user.name||'Operator'));const editable=['ADMIN','OPERATOR'].includes(session.user.role);setCanEdit(editable);if(editable&&new URLSearchParams(window.location.search).has('create')){setModal(true);window.history.replaceState(null,'','/workflows')}void load()}).catch(e=>{if(alive){setError(e?.message||'Unable to connect to the authentication service.');setLoading(false)}});return()=>{alive=false}},[router,load]);
  useEffect(()=>{if(!modal){setCreateError('');return}function close(e:KeyboardEvent){if(e.key==='Escape')setModal(false)}window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[modal]);
  const filtered=useMemo(()=>workflows.filter(w=>(filter==='ALL'||w.status===filter)&&(w.name+' '+(w.description||'')).toLowerCase().includes(query.toLowerCase())),[workflows,filter,query]);
  const active=workflows.filter(w=>w.status==='ACTIVE').length;
