@@ -86,3 +86,16 @@
 .sb-payload-presets button{font:700 11px Inter,system-ui,sans-serif;color:#d3dcf2;background:#253452;border:1px solid #465575;border-radius:9px;padding:9px 11px;cursor:pointer}
 .sb-payload-presets button:hover{background:#343e76;border-color:#8b92ff;color:#fff}
 .sb-preset-note{font-size:11px!important;line-height:1.55!important;color:#8598b3!important;margin:11px 0 20px!important}
+
+/* Workflow loading and retry */
+.sb-editor-loading{display:grid!important;grid-template-rows:1fr!important;place-items:center!important;background:radial-gradient(circle at center,#292a5a55,transparent 60%),#0d1524!important}
+.sb-editor-loading-card{text-align:center;max-width:min(90%,420px);padding:38px;color:#dfe8fa;font-family:Inter,system-ui,sans-serif}
+.sb-editor-load-icon{display:grid;place-items:center;width:67px;height:67px;margin:0 auto 22px;background:#313865;border:1px solid #6267a4;border-radius:20px;color:#c6c4ff;box-shadow:0 15px 55px #5959e836}
+.sb-editor-loading-card h2{font-size:25px;letter-spacing:-.04em;margin:0 0 11px;color:#f5f6ff}
+.sb-editor-loading-card p{font-size:13px;line-height:1.75;color:#9aabc7}
+.sb-editor-loading-bar{display:block;margin:25px auto 0;width:140px;height:5px;border-radius:9px;overflow:hidden;background:linear-gradient(90deg,#39466e,#9c9afc,#39466e);background-size:200% 100%;animation:sb-shimmer 1.3s ease-in-out infinite}
+.sb-editor-load-actions{display:flex;justify-content:center;gap:10px;margin-top:22px}
+.sb-editor-load-actions button{cursor:pointer;background:#747afa;border:1px solid #999bff;color:white;padding:11px 16px;border-radius:10px;font-size:12px;font-weight:700}
+.sb-editor-load-actions button+button{background:#1b2a43;border-color:#42506a}
+@keyframes sb-shimmer{to{background-position:-200% 0}}
+@media(prefers-reduced-motion:reduce){.sb-editor-loading-bar{animation:none}}
