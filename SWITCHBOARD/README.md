@@ -141,7 +141,7 @@ Never commit `.env` files or production credentials. Keep database/SSH/SMTP secr
 - Accounts that previously registered without receiving verification can use the **Resend verification** action when SMTP is configured.
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` bootstrap a new admin on an empty database; **a server restart no longer resets an existing administrator's password**.
 - Owner recovery: set a fresh unique `ADMIN_PASSWORD` (12+ characters) and `ADMIN_EMAIL` in the private Render environment, then run **`npm run admin:reset`** from the backend service's trusted shell. Do not expose this command as a web API.
-- `CREDENTIAL_ENCRYPTION_KEY` must remain a stable, random **64-character hexadecimal** key. Changing this key prevents decryption of existing credentials. The Render `generateValue` option is not guaranteed to generate that exact format.
+- `CREDENTIAL_ENCRYPTION_KEY` must remain a stable, random secret. A **64-character hexadecimal key** is recommended; randomly generated 32+ character Render secrets are also supported (derived to AES-256 with SHA-256). Changing an existing key prevents decryption of saved credentials.
 - A successful Vercel frontend build alone does **not** confirm Render health or PostgreSQL connectivity. Check `/health` and `/health/ready` on the backend, and the GitHub **Backend authentication checks** workflow.
 
 **Do not commit real passwords, SMTP secrets, JWT secrets or encryption keys, and do not use the sample admin password in production.**
