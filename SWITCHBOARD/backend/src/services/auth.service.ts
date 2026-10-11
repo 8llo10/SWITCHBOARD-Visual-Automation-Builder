@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { signToken } from '../middleware/auth.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
-import { issueVerification } from './email-verification.service.js';
+import { issueVerification, isEmailDeliveryConfigured } from './email-verification.service.js';
 
 function session(user:{id:string;email:string;name:string;role:'ADMIN'|'OPERATOR'|'VIEWER';emailVerifiedAt:Date|null}){
   return {token:signToken(user),user:{id:user.id,email:user.email,name:user.name,role:user.role,emailVerifiedAt:user.emailVerifiedAt}};
@@ -24,6 +24,7 @@ export async function login(email:string,password:string){
 export async function register(name:string,email:string,password:string){
   const normalized=email.toLowerCase();
   if(normalized===env.ADMIN_EMAIL.toLowerCase())return {status:'RESERVED' as const};
+  if(!isEmailDeliveryConfigured())return {status:'EMAIL_UNAVAILABLE' as const};
   const existing=await prisma.user.findUnique({where:{email:normalized},select:{id:true,emailVerifiedAt:true,active:true,name:true,email:true}});
   if(existing)return {status:'EXISTS' as const};
 
