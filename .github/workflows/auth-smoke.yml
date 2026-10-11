@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/auth-smoke.yml']
+    paths:
+      - '.github/workflows/auth-smoke.yml'
+      - 'SWITCHBOARD/backend/**'
 permissions:
   contents: read
 jobs:
