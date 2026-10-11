@@ -125,3 +125,23 @@ npm run seed
 ## Security notes
 
 Never commit `.env` files or production credentials. Keep database/SSH/SMTP secrets in the encrypted credential store or deployment environment. Use HTTPS in production, rotate secrets after accidental exposure, and restrict infrastructure credentials to least privilege.
+
+
+## Authentication and signup (production)
+
+- Login uses a server-set **HttpOnly, Secure, SameSite=Lax** session cookie. Never store the login token in browser localStorage.
+- `GET /api/auth/me` validates the real session; the frontend does not trust cached user data alone.
+- Registration requires email verification. **Do not bypass email verification in production.** Configure email delivery on the Render backend first:
+  - `SMTP_HOST`: provider's SMTP hostname.
+  - `SMTP_PORT`: usually 465 (TLS) or 587 (STARTTLS).
+  - `SMTP_USER` and `SMTP_PASS`: provider credentials (keep them in Render environment settings, not Git).
+  - `SMTP_FROM`: a verified sender address accepted by your mail provider.
+  - `FRONTEND_URL`: your real frontend origin (verification links must point here).
+- `GET /api/auth/config` safely reports `registrationEnabled`. When SMTP is missing, signup returns `503 / EMAIL_DELIVERY_UNAVAILABLE` **before creating an account**, instead of creating an unusable account.
+- Accounts that previously registered without receiving verification can use the **Resend verification** action when SMTP is configured.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` bootstrap a new admin on an empty database; **a server restart no longer resets an existing administrator's password**.
+- Owner recovery: set a fresh unique `ADMIN_PASSWORD` (12+ characters) and `ADMIN_EMAIL` in the private Render environment, then run **`npm run admin:reset`** from the backend service's trusted shell. Do not expose this command as a web API.
+- `CREDENTIAL_ENCRYPTION_KEY` must remain a stable, random **64-character hexadecimal** key. Changing this key prevents decryption of existing credentials. The Render `generateValue` option is not guaranteed to generate that exact format.
+- A successful Vercel frontend build alone does **not** confirm Render health or PostgreSQL connectivity. Check `/health` and `/health/ready` on the backend, and the GitHub **Backend authentication checks** workflow.
+
+**Do not commit real passwords, SMTP secrets, JWT secrets or encryption keys, and do not use the sample admin password in production.**
