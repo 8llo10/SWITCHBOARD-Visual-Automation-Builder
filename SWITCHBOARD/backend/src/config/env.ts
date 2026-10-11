@@ -17,7 +17,7 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('Switchboard <noreply@switchboard.local>'),
-  CREDENTIAL_ENCRYPTION_KEY: z.string().regex(/^[0-9a-fA-F]{64}$/),
+  CREDENTIAL_ENCRYPTION_KEY: z.string().min(32).refine(value=>/^[0-9a-fA-F]{64}$/.test(value)||value.length>=32,{message:'Use a stable 64-character hex key or a generated 32+ character random secret'}),
 });
 
 export const env = schema.parse(process.env);
