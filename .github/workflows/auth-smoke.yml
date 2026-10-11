@@ -20,8 +20,11 @@ jobs:
           check() {
             local path="$1"
             local status
-            status=$(curl -sSL --connect-timeout 12 --max-time 40 -o /dev/null -w '%{http_code}' "$base$path") || status=000
+            status=$(curl -sSL --connect-timeout 12 --max-time 40 -o /tmp/sb-endpoint-response -w '%{http_code}' "$base$path") || status=000
             echo "$path -> HTTP $status"
+            if [[ "$path" == '/health' || "$path" == '/health/ready' ]]; then
+              jq -c '{ok, database, startup, service}' /tmp/sb-endpoint-response 2>/dev/null || true
+            fi
             if [[ "$status" != "200" ]]; then
               echo "::error::Render backend did not return HTTP 200 for $path. Inspect Render deploy logs and environment."
               exit 1
