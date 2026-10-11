@@ -3,7 +3,7 @@ import Link from 'next/link';
 import {useEffect,useState} from 'react';
 import {usePathname,useRouter} from 'next/navigation';
 import {Activity,ArrowUpRight,ChartNoAxesCombined,ChevronLeft,ChevronRight,Command,Search,KeyRound,LogOut,Network,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
-import {getSession,logoutSession} from '../lib/switchboard';
+import {getSession,logoutSession,restoreSession} from '../lib/switchboard';
 import {CommandPalette} from './CommandPalette';
 
 const sections=[
@@ -21,10 +21,13 @@ const sections=[
 export function Shell({children,title,eyebrow,actions}:{children:React.ReactNode;title:string;eyebrow?:string;actions?:React.ReactNode}){
  const path=usePathname(),router=useRouter();
  const [session,setSessionState]=useState<ReturnType<typeof getSession>|undefined>(undefined);
+ const [authError,setAuthError]=useState('');
+ const [retry,setRetry]=useState(0);
  const [collapsed,setCollapsed]=useState(false);
- useEffect(()=>{const current=getSession();if(!current){router.replace('/login');return}setSessionState(current)},[router]);
+ useEffect(()=>{let alive=true;setAuthError('');restoreSession().then(current=>{if(!alive)return;if(!current){router.replace('/login');return}setSessionState(current)}).catch(e=>{if(alive)setAuthError(e?.message||'Unable to contact authentication service.')});return()=>{alive=false}},[router,retry]);
  const logout=async()=>{await logoutSession();router.replace('/login')};
- if(!session)return <div className="sb-loading-screen" role="status"><span className="sb-loader"/><strong>Preparing your workspace</strong></div>;
+ if(authError)return <div className="sb-loading-screen sb-auth-recovery" role="alert"><strong>Unable to verify your session</strong><p>{authError}</p><button type="button" onClick={()=>{setAuthError('');setRetry(n=>n+1)}}>Try again</button><button type="button" onClick={()=>void logout().then(()=>router.replace('/login'))}>Sign out</button></div>;
+ if(!session)return <div className="sb-loading-screen" role="status"><span className="sb-loader"/><strong>Verifying your session…</strong></div>;
  const username=String((session.user as any)?.name||'Operator');
  return <div className={`product-shell sb-app-shell ${collapsed?'rail-collapsed':''}`}>
   <aside className="product-rail" aria-label="Workspace navigation">
