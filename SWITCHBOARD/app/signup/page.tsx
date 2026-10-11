@@ -18,7 +18,7 @@ export default function Signup(){
  const [status,setStatus]=useState<'checking'|'available'|'unavailable'|'unknown'>('checking');
  const checkAvailability=async()=>{
   setStatus('checking');
-  try{const config=await sb<Config>('/auth/config',{auth:false});setStatus(config.registrationEnabled?'available':'unavailable')}
+  try{const config=await sb<Config>('/auth/config',{auth:false,signal:AbortSignal.timeout(18000)});setStatus(config.registrationEnabled?'available':'unavailable')}
   catch{setStatus('unknown')}
  };
  useEffect(()=>{void checkAvailability()},[]);
@@ -28,7 +28,7 @@ export default function Signup(){
   setBusy(true);setError('');
   try{
    const result=await sb<{verificationRequired:boolean;verificationSent:boolean;message:string}>('/auth/register',{
-    method:'POST',body:JSON.stringify({name:name.trim(),email:email.trim().toLowerCase(),password}),auth:false
+    method:'POST',body:JSON.stringify({name:name.trim(),email:email.trim().toLowerCase(),password}),auth:false,signal:AbortSignal.timeout(45000)
    });
    router.replace('/verify-email?email='+encodeURIComponent(email.trim().toLowerCase())+'&sent='+(result.verificationSent?'1':'0'));
   }catch(err){
