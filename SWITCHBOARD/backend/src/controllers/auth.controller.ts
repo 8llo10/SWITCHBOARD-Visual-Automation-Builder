@@ -16,12 +16,13 @@ export async function register(req:Request,res:Response){
   const input=registerSchema.parse(req.body);
   const result=await authService.register(input.name,input.email,input.password);
   if(result.status==='RESERVED')return res.status(403).json({error:'This email is reserved'});
-  if(result.status==='EXISTS')return res.status(409).json({error:'An account with this email already exists'});
+  if(result.status==='EXISTS')return res.status(409).json({error:'An account with this email already exists',code:'ACCOUNT_EXISTS'});
+  if(result.status==='EMAIL_UNAVAILABLE')return res.status(503).json({error:'Signup is temporarily unavailable because email verification has not been configured. Contact the workspace administrator.',code:'EMAIL_DELIVERY_UNAVAILABLE'});
   return res.status(201).json({
     user:result.user,
     verificationRequired:true,
     verificationSent:result.verification.sent,
-    message:result.verification.sent?'Check your email to verify your account.':'Account created. Email delivery is not configured yet.',
+    message:result.verification.sent?'Check your email to verify your account.':'Account created but the verification email could not be delivered. Try resending it later.',
   });
 }
 
@@ -34,6 +35,7 @@ export async function verifyEmail(req:Request,res:Response){
 
 export async function resendVerification(req:Request,res:Response){
   const {email}=resendVerificationSchema.parse(req.body);
+  if(!verificationService.isEmailDeliveryConfigured())return res.status(503).json({error:'Verification email delivery is not configured. Contact the workspace administrator.',code:'EMAIL_DELIVERY_UNAVAILABLE'});
   const result=await verificationService.resendVerification(email);
   if('cooldownSeconds' in result&&result.cooldownSeconds&&result.cooldownSeconds>0){
     return res.status(429).json({error:'Please wait before requesting another verification email',retryAfterSeconds:result.cooldownSeconds});
