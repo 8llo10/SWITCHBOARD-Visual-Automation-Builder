@@ -98,3 +98,22 @@
 .sb-in-shell .wf-modal .wf-field{margin:18px 0 9px}
 @media(max-width:950px){.sb-in-shell .sb-gallery-callout{grid-template-columns:1fr}.sb-gallery-preview{display:none}}
 @media(max-width:620px){.sb-in-shell .sb-gallery-callout{padding:22px}.sb-template-grid{grid-template-columns:1fr}.sb-in-shell .wf-modal{padding:20px;max-height:93vh}.sb-template-tile{padding:14px;gap:9px}.sb-in-shell .wf-modal h2{font-size:22px}}
+
+/* Real run activity chart */
+.ov-trends{padding-bottom:30px}
+.ov-chart-note{color:#899bb7;font-size:11px;line-height:1.5;margin:-10px 0 20px}
+.ov-chart-legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+.ov-chart-legend span{display:flex;align-items:center;gap:7px;color:#91a3ba;font-size:10px}
+.ov-chart-legend i{width:7px;height:7px;border-radius:50%;display:inline-block}
+.ov-chart-legend .green{background:#6ce3af}
+.ov-chart-legend .red{background:#f58b9c}
+.ov-chart-legend .blue{background:#98a1ff}
+.ov-chart-bars{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(10px,2vw,30px);align-items:end;height:196px;padding:0 20px 7px;border-bottom:1px solid #314158;background:repeating-linear-gradient(to top,transparent 0,transparent 40px,#45536e30 41px)}
+.ov-chart-day{height:100%;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:12px}
+.ov-chart-stack{height:150px;width:clamp(16px,50%,64px);display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;overflow:hidden;border-radius:8px 8px 3px 3px;background:#283750}
+.ov-chart-stack span{width:100%;display:block;flex-shrink:0;min-height:0;transition:height .2s ease}
+.ov-bar-success{background:linear-gradient(180deg,#8ef3c1,#49bd99)}
+.ov-bar-failed{background:#f58b9c}
+.ov-bar-remaining{background:#9195f9}
+.ov-chart-day-label{color:#92a4bd;font-size:11px;font-weight:700;white-space:nowrap}
+@media(max-width:650px){.ov-chart-bars{padding:0 0 7px;gap:10px;height:164px}.ov-chart-stack{height:119px;max-width:38px}.ov-chart-legend{gap:9px}.ov-chart-legend span{font-size:9px}.ov-chart-day-label{font-size:10px}}
