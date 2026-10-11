@@ -10,15 +10,21 @@ jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Backend liveness (no credentials)
+      - name: Backend liveness and email readiness (no credentials)
         shell: bash
         run: |
-          set +e
-          echo "== /health =="
-          curl -sSL --max-time 65 --retry 1 --retry-delay 4 -o /tmp/sb-health -w 'HTTP status: %{http_code}; total time: %{time_total}s\n' 'https://switchboard-api-tqc3.onrender.com/health'
-          sed -E 's/"[^"]*(password|token|secret)[^"]*":("[^"]*"|[^,}]+)/"[redacted]":"[redacted]"/Ig' /tmp/sb-health | head -c 1000 || true
-          echo
-          echo "== /api/auth/config =="
-          curl -sSL --max-time 65 --retry 1 --retry-delay 4 -o /tmp/sb-config -w 'HTTP status: %{http_code}; total time: %{time_total}s\n' 'https://switchboard-api-tqc3.onrender.com/api/auth/config'
-          head -c 1000 /tmp/sb-config || true
-          echo
+          set -euo pipefail
+          base="https://switchboard-api-tqc3.onrender.com"
+          check() {
+            local path="$1"
+            local status
+            status=$(curl -sSL --connect-timeout 12 --max-time 40 -o /dev/null -w '%{http_code}' "$base$path") || status=000
+            echo "$path -> HTTP $status"
+            if [[ "$status" != "200" ]]; then
+              echo "::error::Render backend did not return HTTP 200 for $path. Inspect Render deploy logs and environment."
+              exit 1
+            fi
+          }
+          check "/health"
+          check "/health/ready"
+          check "/api/auth/config"
