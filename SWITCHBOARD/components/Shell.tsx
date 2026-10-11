@@ -2,8 +2,9 @@
 import Link from 'next/link';
 import {useEffect,useState} from 'react';
 import {usePathname,useRouter} from 'next/navigation';
-import {Activity,ArrowUpRight,ChartNoAxesCombined,ChevronLeft,ChevronRight,KeyRound,LogOut,Network,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
+import {Activity,ArrowUpRight,ChartNoAxesCombined,ChevronLeft,ChevronRight,Command,Search,KeyRound,LogOut,Network,ScrollText,Settings,ShieldCheck,Users,Workflow,Zap} from 'lucide-react';
 import {getSession,logoutSession} from '../lib/switchboard';
+import {CommandPalette} from './CommandPalette';
 
 const sections=[
   {href:'/dashboard',label:'Overview',icon:ChartNoAxesCombined,roles:['ADMIN','OPERATOR','VIEWER']},
@@ -37,9 +38,10 @@ export function Shell({children,title,eyebrow,actions}:{children:React.ReactNode
    </div>
   </aside>
   <main className="product-main">
-   <header className="product-topbar"><div className="sb-page-heading"><p>{eyebrow||'AUTOMATION WORKSPACE'}</p><h1>{title}</h1></div><div className="product-top-actions">{actions}<span className="sb-top-avatar" aria-label={username}>{username.slice(0,1).toUpperCase()}</span></div></header>
+   <header className="product-topbar"><div className="sb-page-heading"><p>{eyebrow||'AUTOMATION WORKSPACE'}</p><h1>{title}</h1></div><div className="product-top-actions"><button type="button" className="sb-command-trigger" aria-label="Search pages and workflows (Control K)" title="Search (Ctrl+K)" onClick={()=>window.dispatchEvent(new Event('switchboard:command'))}><Search size={17}/><span>Search anything</span><kbd><Command size={11}/> K</kbd></button>{actions}<span className="sb-top-avatar" aria-label={username}>{username.slice(0,1).toUpperCase()}</span></div></header>
    <section className="product-content">{children}</section>
   </main>
+  <CommandPalette/>
  </div>
 }
 export function EmptyState({title,body,action}:{title:string;body:string;action?:React.ReactNode}){return <div className="empty-state"><div className="empty-icon"><Workflow size={26}/></div><h3>{title}</h3><p>{body}</p>{action}</div>}
