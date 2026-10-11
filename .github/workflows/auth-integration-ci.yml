@@ -1,0 +1,77 @@
+name: Auth integration with PostgreSQL
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'SWITCHBOARD/backend/**'
+      - '.github/workflows/auth-integration-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  auth:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: switchboard_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d switchboard_ci"
+          --health-interval 4s
+          --health-timeout 3s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: SWITCHBOARD/backend
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/switchboard_ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/switchboard_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: SWITCHBOARD/backend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Provision isolated schema
+        run: npx prisma generate && npx prisma db push --skip-generate
+      - name: Build
+        run: npm run build
+      - name: Exercise real login and session
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PORT=14001
+          export FRONTEND_URL=http://localhost:3000
+          export JWT_SECRET="$(openssl rand -hex 32)"
+          export ADMIN_EMAIL=ci-owner@example.test
+          export ADMIN_PASSWORD="$(openssl rand -hex 24)"
+          export CREDENTIAL_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          node dist/server.js > /tmp/sb-auth-integration.log 2>&1 &
+          pid="$!"
+          trap 'kill "$pid" 2>/dev/null || true; tail -25 /tmp/sb-auth-integration.log || true' EXIT
+          for n in {1..30}; do
+            if curl -fsS --max-time 3 http://localhost:14001/health/ready > /dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          curl -fsS --max-time 5 http://localhost:14001/health/ready > /dev/null
+          body="$(jq -cn --arg email "$ADMIN_EMAIL" --arg password "$ADMIN_PASSWORD" '{email:$email,password:$password}')"
+          result="$(curl -fsS --max-time 10 -H 'content-type: application/json' -d "$body" http://localhost:14001/api/auth/login)"
+          token="$(printf '%s' "$result" | jq -r '.token // empty')"
+          test -n "$token"
+          whoami="$(curl -fsS --max-time 5 -H "Authorization: Bearer $token" http://localhost:14001/api/auth/me)"
+          test "$(printf '%s' "$whoami" | jq -r '.role')" = 'ADMIN'
+          config="$(curl -fsS --max-time 5 http://localhost:14001/api/auth/config)"
+          test "$(printf '%s' "$config" | jq -r '.registrationEnabled')" = 'false'
+          echo 'Authenticated session and SMTP readiness checks passed'
