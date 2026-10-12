@@ -31,6 +31,14 @@ export async function executeRun(runId:string,resumeFromNodeId?:string){
  const run=await prisma.workflowRun.findUniqueOrThrow({where:{id:runId},include:{workflow:true,steps:true}});
  const stored=run.context as any;const def=(stored?.definitionSnapshot||run.workflow.definition) as unknown as WorkflowDefinition;
  const context:EngineContext=resumeFromNodeId?((stored?.runtime||stored) as EngineContext):{trigger:run.triggerPayload as any,vars:{},outputs:{}};
+ if(resumeFromNodeId){
+  // A resumed approval step has completed since the runtime snapshot was last saved.
+  // Restore its persisted output so downstream templates can reference it.
+  const approvedStep=[...run.steps].reverse().find(s=>s.nodeId===resumeFromNodeId&&s.status==='SUCCEEDED');
+  if(!approvedStep)throw new Error('Cannot resume: approval step has not succeeded');
+  context.outputs={...(context.outputs||{}),[resumeFromNodeId]:approvedStep.output};
+  context.vars={...(context.vars||{}),last:approvedStep.output};
+ }
  const envelope=()=>({workflowVersion:stored?.workflowVersion??run.workflow.version,definitionSnapshot:def,runtime:context});
  if(await cancelled(runId))return;
  await prisma.workflowRun.update({where:{id:runId},data:{status:'RUNNING',startedAt:run.startedAt||new Date(),error:null,context:envelope() as any}});await log(runId,resumeFromNodeId?'Workflow execution resumed':'Workflow execution started');
